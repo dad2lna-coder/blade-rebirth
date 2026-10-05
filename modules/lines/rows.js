@@ -1,5 +1,6 @@
 // @ts-nocheck
-/** Line rows for Review. Derived from the setup session — not a second store. */
+import { parseStartDate, addDays, weekdaySun0 } from "../setup-panel/utils/dates.js";
+
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -45,6 +46,17 @@ function resolveWorkDayDuty(line, duty) {
   return duty === "BAG" || duty === "PAX" ? duty : null;
 }
 
+function offsetForDow(S, dow) {
+  var base = parseStartDate(S && S.state && S.state.startDate);
+  var days = Math.min(7, (((S && S.state && S.state.weekCount) || 1) * 7));
+  for (var off = 0; off < days; off++) {
+    if (weekdaySun0(addDays(base, off)) === dow) return off;
+  }
+  return dow;
+}
+
+export { offsetForDow };
+
 function teamFor(S, lineId) {
   if (S && typeof S.teamMetaForLine === "function") return S.teamMetaForLine(lineId);
   var teams = (S && S.teams && S.teams.teams) || [];
@@ -83,13 +95,21 @@ export function lineToRow(S, line) {
   var rowSchedule = schedule[line.id] || schedule[String(line.id)] || [];
   var days = [];
   var dayDuties = [];
+  var dayStarts = [];
+  var dayEnds = [];
   var hours = 0;
 
   for (var day = 0; day < 7; day++) {
-    var value = rowSchedule[day];
+    var off = offsetForDow(S, day);
+    var dayCustom = line.dayTimes && line.dayTimes[String(off)];
+    var effStart = (dayCustom && dayCustom.start) || start;
+    var effEnd = (dayCustom && dayCustom.end) || end;
+    dayStarts.push(effStart);
+    dayEnds.push(effEnd);
+    var value = rowSchedule[off];
     if (value === "WORK") {
       hours += paid;
-      var duty = rotationDuty(S, line.id, day);
+      var duty = rotationDuty(S, line.id, off);
       days.push(workLabel);
       dayDuties.push(resolveWorkDayDuty(line, duty) || "PAX");
     } else {
@@ -116,6 +136,8 @@ export function lineToRow(S, line) {
     paid: paid,
     days: days,
     dayDuties: dayDuties,
+    dayStarts: dayStarts,
+    dayEnds: dayEnds,
     hours: hours,
   };
 }
@@ -136,6 +158,7 @@ export function rowMatches(row, filter) {
     if (hay.indexOf(q) < 0) return false;
   }
   if (filter.role && filter.role !== "ALL" && row.position !== filter.role) return false;
+  if (filter.emp && row.emp !== filter.emp) return false;
   if (filter.shift && row.shiftId !== filter.shift) return false;
   if (filter.sex && row.sex !== filter.sex) return false;
   if (filter.team === "__none__") {
