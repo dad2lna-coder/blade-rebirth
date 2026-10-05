@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { parseStartDate, addDays, weekdaySun0 } from "../setup-panel/utils/dates.js";
+import { parseStartDate, addDays, weekdaySun0 } from "../build/period/dates.js";
 
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -37,7 +37,7 @@ function rotationDuty(S, lineId, dayIndex) {
 function resolveWorkDayDuty(line, duty) {
   if (duty === "TRAINING") return "TRAINING";
   if (duty === "-" || duty === "BAG" || duty === "PAX" || duty === "DFO") return duty;
-  if (line.isTraining || line.trainingClass || line.empClass === "ESTI" || line.empClass === "MSTI" || line.extraName === "ESTI" || line.extraName === "MSTI") {
+  if (line.isTraining || line.trainingClass) {
     return "TRAINING";
   }
   if (line.function === "BAG") return "BAG";

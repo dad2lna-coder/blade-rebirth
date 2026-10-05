@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { session } from "../setup-panel/session";
-  import { onSessionLines } from "../setup-panel/sessionBus.js";
+  import { session } from "../build/session";
+  import { onSessionLines } from "../build/sessionBus.js";
   import { writeDayDuty, writeDayTime, writeInlineEdit } from "./edit.js";
   import { rowMatches, rowsFromSession } from "./rows.js";
 

@@ -1,6 +1,6 @@
 // @ts-nocheck
 /** Bind Alpha function coverage onto the setup session. No DOM reader — the form writes state. */
-import { addDays, weekdaySun0 } from "../utils/dates.js";
+import { addDays, weekdaySun0 } from "../period/dates.js";
 import {
   bindDutyApi,
   lineRoleKey,

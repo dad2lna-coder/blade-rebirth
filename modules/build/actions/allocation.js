@@ -1,9 +1,9 @@
 // @ts-nocheck
 /** Attach Setup allocation helpers onto Scheduler. */
-import { operatingSlots, refineBalance } from "../utils/slots.js";
-import { allocateShiftHeadcounts, allocateSupervisoryHeadcounts } from "../utils/headcounts.js";
-import { buildLines, buildSupervisoryLines } from "../utils/buildLines.js";
-import { readCertConfigFromDom, clearLineFunctions, assignCertifications } from "../utils/certs.js";
+import { operatingSlots, refineBalance } from "../shifts/slots.js";
+import { allocateShiftHeadcounts, allocateSupervisoryHeadcounts } from "../fte/headcounts.js";
+import { buildLines, buildSupervisoryLines } from "../fte/buildLines.js";
+import { readCertConfigFromDom, clearLineFunctions, assignCertifications } from "../certs/certs.js";
 
 export function attachAllocation(S) {
   if (!S) return;

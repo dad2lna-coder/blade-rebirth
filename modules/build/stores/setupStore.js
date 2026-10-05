@@ -43,7 +43,6 @@ export function defaultSetupState() {
     ptDaysPerWeek: 3,
     ltsoM: 1, ltsoF: 1,
     stsoM: 2, stsoF: 2,
-    esti: 0, msti: 0,
     certDfoMax: 0, certPaxMax: 0, certBagMax: 0,
     certDfoEnabled: true, certBagEnabled: true,
     certPool: { pools: ["A", "B"], targetBPercent: 45, functionMap: { DFO: "B", BAG: "", PAX: "" } },

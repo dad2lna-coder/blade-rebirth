@@ -137,7 +137,7 @@ export function extraCardsHtml(list, shifts) {
       '<label>Name <input type="text" data-extra-name="' + pos.id + '" value="' + safeName + '" style="width:7rem"></label>' +
       '<label>Male <input type="number" min="0" data-extra-m="' + pos.id + '" value="' + num0(pos.m) + '" style="width:4.5rem"></label>' +
       '<label>Female <input type="number" min="0" data-extra-f="' + pos.id + '" value="' + num0(pos.f) + '" style="width:4.5rem"></label>' +
-      '<label>Ops FTE <select data-extra-ops="' + pos.id + '">' +
+      '<label>Counted <select data-extra-ops="' + pos.id + '">' +
       '<option value="no"' + (ops === "no" ? " selected" : "") + ">No</option>" +
       '<option value="yes"' + (ops === "yes" ? " selected" : "") + ">Yes</option>" +
       "</select></label>" +
@@ -369,7 +369,7 @@ export function attachExtraPositions(S) {
     var list = ensureExtraList(S);
     list.push(normalizeExtraPosition({
       id: "extra-" + Date.now() + "-" + (list.length + 1),
-      name: name || "MSTI",
+      name: name || "Position",
       m: 0,
       f: 0,
       opsFte: false,

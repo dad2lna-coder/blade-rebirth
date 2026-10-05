@@ -1,6 +1,6 @@
 // @ts-nocheck
 /** Coverage counts from the live session. Alpha opsFte + dash-duty rules. Not a line store. */
-import { parseStartDate, addDays, weekdaySun0 } from "../setup-panel/utils/dates.js";
+import { parseStartDate, addDays, weekdaySun0 } from "../build/period/dates.js";
 
 var DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -40,13 +40,13 @@ function rotationDuty(S, lineId, dayOff) {
   return null;
 }
 
-/** Alpha lineMatchesCoverageFilter: ops FTE, then dash / training out, then role + duty view. */
+/** Alpha opsFte gate, then dash / training out. A line that is not counted still counts on a day whose duty is BAG, DFO, or PAX. */
 export function lineMatchesCoverageFilter(S, line, dayOff, view) {
   if (!line) return false;
-  var inOps = S.lineInOpsCoverage
+  var counted = S.lineInOpsCoverage
     ? S.lineInOpsCoverage(line)
-    : (line.isExtra || line.extraPositionId || line.isTraining ? !!line.opsFte : true);
-  if (!inOps || line.opsFte === false) return false;
+    : !(line.isExtra || line.extraPositionId || line.isTraining) || !!line.opsFte;
+  if (line.opsFte === false) counted = false;
 
   var cv = view || S.coverageView || { stso: false, ltso: false, tso: true, funcView: "all" };
   var role = S.lineRoleKey ? S.lineRoleKey(line) : "TSO";
@@ -60,11 +60,21 @@ export function lineMatchesCoverageFilter(S, line, dayOff, view) {
   if (duty === "BAGGAGE") duty = "BAG";
   if (duty === "PASSENGER") duty = "PAX";
   if (!duty) {
-    duty = line.function === "BAG" ? "BAG" : (line.function === "DFO" || line.function === "PAX" ? "PAX" : (line.function === "-" ? "-" : (line.isTraining || line.trainingClass || line.empClass === "ESTI" || line.empClass === "MSTI" ? "TRAINING" : "PAX")));
+    if (line.function === "BAG") duty = "BAG";
+    else if (line.function === "DFO" || line.function === "PAX") duty = line.function === "DFO" ? "DFO" : "PAX";
+    else if (line.function === "-") duty = "-";
+    else if (line.function === "TRAINING" || line.isTraining || line.trainingClass) duty = "TRAINING";
+    else if (counted) duty = "PAX";
+    else duty = "";
   }
 
-  if (duty === "-" || line.function === "-") return false;
-  if (duty === "TRAINING") return false;
+  var opsDuty = duty === "BAG" || duty === "DFO" || duty === "PAX";
+  if (!counted) {
+    if (!opsDuty) return false;
+  } else {
+    if (duty === "-" || line.function === "-") return false;
+    if (duty === "TRAINING") return false;
+  }
 
   var fv = cv.funcView || "all";
   if (fv === "all") return true;

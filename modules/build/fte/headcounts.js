@@ -1,6 +1,6 @@
 // @ts-nocheck
 /** Force + free-pool headcount allocation across shifts. */
-import { operatingSlots, refineBalance } from "./slots.js";
+import { operatingSlots, refineBalance } from "../shifts/slots.js";
 
 export function allocateShiftHeadcounts(S, totalPeople, openMin, closeMin) {
   var slots = operatingSlots(openMin, closeMin);

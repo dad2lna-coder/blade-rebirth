@@ -31,8 +31,6 @@ export function getModalClassOptions(extraPositions: SetupSession["state"]["extr
     { key: "STSO", label: "STSO" },
     { key: "LTSO", label: "LTSO" },
     { key: "TSO", label: "TSO" },
-    { key: "MSTI", label: "MSTI" },
-    { key: "ESTI", label: "ESTI" },
   ];
 
   for (const pos of extraPositions) {
@@ -52,8 +50,8 @@ function ensureClass(current: string, options: ClassOption[]): string {
   return fallbackClass(options);
 }
 
-export function isTrainingClass(classKey: string): boolean {
-  return classKey === "MSTI" || classKey === "ESTI";
+export function isTrainingClass(_classKey: string): boolean {
+  return false;
 }
 
 /** Band key from the shift, or its crew group. Not a scheduler. */

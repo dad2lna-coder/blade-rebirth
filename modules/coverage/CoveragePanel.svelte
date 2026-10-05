@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { session } from "../setup-panel/session";
-  import { onSessionLines } from "../setup-panel/sessionBus.js";
+  import { session } from "../build/session";
+  import { onSessionLines } from "../build/sessionBus.js";
   import { computeHourlyByDow, dutySnapshot, shiftMix, slotLabel } from "./counts.js";
 
   let tick = $state(0);
@@ -66,7 +66,7 @@
     <label class="check"><input type="radio" name="cov-func" value="pax" bind:group={funcView} /> PAX</label>
   </div>
 
-  <p class="hint">Ops lines only. Dash duty and training stay out of the count. Cells are M/F/Total.</p>
+  <p class="hint">Counted lines only, plus a not-counted line on a day it is BAG, DFO, or PAX. Dash duty and training stay out. Cells are M/F/Total.</p>
 
   <div class="totals" aria-label="Weekday headcount">
     {#each hourly.days as label, index (label)}

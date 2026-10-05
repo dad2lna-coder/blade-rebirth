@@ -3,12 +3,11 @@ import { attachGenerate } from "./actions/generate.js";
 import { attachAllocation } from "./actions/allocation.js";
 import { attachFunctionCoverage } from "./function-coverage/attach.js";
 import { attachSetupState } from "./stores/setupStore.js";
-import { attachCertPools } from "./utils/certs.js";
-import { attachClassGenerate } from "./utils/classGenerate.js";
-import { buildExtraPositionLines, lineInOpsCoverage, opsFteYes } from "./utils/extraPositions.js";
-import { attachShiftMath } from "./utils/shiftMath.js";
-import { isValidTimeText, timeToMin } from "./utils/time.js";
-import { attachTrainingClasses } from "./utils/trainingClasses.js";
+import { attachCertPools } from "./certs/certs.js";
+import { attachClassGenerate } from "./actions/classGenerate.js";
+import { buildExtraPositionLines, lineInOpsCoverage, opsFteYes } from "./fte/extraPositions.js";
+import { attachShiftMath } from "./shifts/shiftMath.js";
+import { isValidTimeText, timeToMin } from "./shifts/time.js";
 
 /**
  * Setup session. Generate and single-class generate run Alpha's engine.
@@ -44,7 +43,6 @@ export function createEmptySession(): SetupSession {
   attachSetupState(session);
   attachShiftMath(session);
   attachAllocation(session);
-  attachTrainingClasses(session);
   attachCertPools(session);
   attachFunctionCoverage(session);
   session.opsFteYes = opsFteYes;

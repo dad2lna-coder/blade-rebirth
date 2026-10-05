@@ -2,8 +2,8 @@
 /** Single-class roster generator. Rebuilds lines for one class while keeping
  *  all other classes' lines, shifts, RDOs, duties, and certs untouched.
  */
-import { buildScheduleForLine } from "../actions/generate.js";
-import { assignCertPoolsToLines } from "./certAssign.js";
+import { buildScheduleForLine } from "./generate.js";
+import { assignCertPoolsToLines } from "../certs/certAssign.js";
 
 export function belongsToClass(line, classKey) {
   if (!line) return false;
@@ -15,14 +15,8 @@ export function belongsToClass(line, classKey) {
   }
   if (classKey === "TSO") {
     var isStsoOrLtso = line.isStso || line.isLtso || line.empClass === "STSO" || line.empClass === "LTSO";
-    var isExtraOrTraining = line.isExtra || line.extraPositionId || line.isTraining || line.trainingClass || line.empClass === "ESTI" || line.empClass === "MSTI";
+    var isExtraOrTraining = line.isExtra || line.extraPositionId || line.isTraining || line.trainingClass;
     return !isStsoOrLtso && !isExtraOrTraining;
-  }
-  if (classKey === "MSTI") {
-    return line.trainingClass === "MSTI" || line.empClass === "MSTI" || line.extraName === "MSTI";
-  }
-  if (classKey === "ESTI") {
-    return line.trainingClass === "ESTI" || line.empClass === "ESTI" || line.extraName === "ESTI";
   }
   if (classKey.indexOf("EXTRA_") === 0) {
     var extraId = classKey.substring(6);
@@ -40,8 +34,6 @@ export function getClassHeadcount(S, classKey) {
     var f = (st.ftF || 0) + (st.ptF || 0);
     return { M: m, F: f, total: m + f };
   }
-  if (classKey === "MSTI") return { M: 0, F: 0, total: st.msti || 0 };
-  if (classKey === "ESTI") return { M: 0, F: 0, total: st.esti || 0 };
   if (classKey.indexOf("EXTRA_") === 0) {
     var extraId = classKey.substring(6);
     var list = st.extraPositions || [];
@@ -132,16 +124,11 @@ export function generateClass(S, classKey, perShiftTargets) {
   if (classKey === "STSO") startId = 10000;
   else if (classKey === "LTSO") startId = 20000;
   else if (classKey === "TSO") startId = 1;
-  else if (classKey === "MSTI") startId = 40000;
-  else if (classKey === "ESTI") startId = 41000;
   else if (classKey.indexOf("EXTRA_") === 0) startId = 30000;
 
   if (perShiftTargets && typeof perShiftTargets === "object") {
-    // Generate class using perShiftTargets, taking locked lines into account
-    var isTrainCls = classKey === "MSTI" || classKey === "ESTI";
-
-    var maxNewM = isTrainCls ? Math.max(0, hc.total - lockedClassLines.length) : Math.max(0, hc.M - lockedM);
-    var maxNewF = isTrainCls ? 0 : Math.max(0, hc.F - lockedF);
+    var maxNewM = Math.max(0, hc.M - lockedM);
+    var maxNewF = Math.max(0, hc.F - lockedF);
 
     var remMaxNewM = maxNewM;
     var remMaxNewF = maxNewF;
@@ -163,25 +150,19 @@ export function generateClass(S, classKey, perShiftTargets) {
       var needM = Math.max(0, tM - lM);
       var needF = Math.max(0, tF - lF);
 
-      if (isTrainCls) {
-        needM = Math.min(needM, remMaxNewM);
-        remMaxNewM -= needM;
-        totalTargetedM += needM;
-      } else {
-        needM = Math.min(needM, remMaxNewM);
-        remMaxNewM -= needM;
-        totalTargetedM += needM;
+      needM = Math.min(needM, remMaxNewM);
+      remMaxNewM -= needM;
+      totalTargetedM += needM;
 
-        needF = Math.min(needF, remMaxNewF);
-        remMaxNewF -= needF;
-        totalTargetedF += needF;
-      }
+      needF = Math.min(needF, remMaxNewF);
+      remMaxNewF -= needF;
+      totalTargetedF += needF;
 
       for (var i = 0; i < needM; i++) {
         var idM = getNextId(usedIds, startId);
         var isPtM = remPtM > 0;
         if (isPtM) remPtM--;
-        newClassLines.push(createLineForClass(S, classKey, idM, sh, isTrainCls ? "" : "M", false, isPtM));
+        newClassLines.push(createLineForClass(S, classKey, idM, sh, "M", false, isPtM));
       }
       for (var j = 0; j < needF; j++) {
         var idF = getNextId(usedIds, startId);
@@ -192,15 +173,7 @@ export function generateClass(S, classKey, perShiftTargets) {
     });
 
     // Handle shortfalls if total targeted < entered headcount
-    if (isTrainCls) {
-      var totalTrainLines = lockedClassLines.length + (maxNewM - remMaxNewM);
-      var shortfallTrain = Math.max(0, hc.total - totalTrainLines);
-      for (var st = 0; st < shortfallTrain; st++) {
-        var sfId = getNextId(usedIds, startId);
-        newClassLines.push(createLineForClass(S, classKey, sfId, fallbackShift, "", false, false));
-      }
-    } else {
-      var shortfallM = Math.max(0, hc.M - totalTargetedM);
+    var shortfallM = Math.max(0, hc.M - totalTargetedM);
       var shortfallF = Math.max(0, hc.F - totalTargetedF);
 
       for (var sm = 0; sm < shortfallM; sm++) {
@@ -217,7 +190,6 @@ export function generateClass(S, classKey, perShiftTargets) {
         var lineSfF = createLineForClass(S, classKey, sfIdF, fallbackShift, "F", true, isPtSfF);
         newClassLines.push(lineSfF);
       }
-    }
   } else {
     // Standard generation for this class
     var allExisting = untouchedLines.concat(lockedClassLines);
@@ -255,16 +227,6 @@ export function generateClass(S, classKey, perShiftTargets) {
         var allocation = S.allocateShiftHeadcounts(tsoTotal, openMin, closeMin);
         newClassLines = S.buildLines(allocation.counts || {});
         S.state.ftM = oFtM; S.state.ftF = oFtF; S.state.ptM = oPtM; S.state.ptF = oPtF;
-      }
-    } else if (classKey === "ESTI" || classKey === "MSTI") {
-      var remTrainTotal = Math.max(0, hc.total - lockedClassLines.length);
-      if (remTrainTotal > 0) {
-        var oEsti = S.state.esti, oMsti = S.state.msti;
-        if (classKey === "ESTI") S.state.esti = remTrainTotal;
-        else S.state.msti = remTrainTotal;
-        var trainLines = S.buildTrainingClassLines ? S.buildTrainingClassLines() : [];
-        newClassLines = trainLines.filter(function (l) { return belongsToClass(l, classKey); });
-        S.state.esti = oEsti; S.state.msti = oMsti;
       }
     } else if (classKey.indexOf("EXTRA_") === 0) {
       var extraId = classKey.substring(6);
@@ -319,7 +281,7 @@ export function generateClass(S, classKey, perShiftTargets) {
   newClassLines.forEach(function (line) {
     var rot = [];
     var sched = S.state.schedule[line.id] || [];
-    var isTrain = line.isTraining || line.trainingClass || line.empClass === "ESTI" || line.empClass === "MSTI";
+    var isTrain = line.isTraining || line.trainingClass;
 
     if (line.isShortfall || line.function === "-") {
       line.function = "-";
@@ -389,11 +351,10 @@ export function generateClass(S, classKey, perShiftTargets) {
 function createLineForClass(S, classKey, id, shift, sex, isShortfall, isPt) {
   var isStso = classKey === "STSO";
   var isLtso = classKey === "LTSO";
-  var isTrain = classKey === "MSTI" || classKey === "ESTI";
   var isExtra = classKey.indexOf("EXTRA_") === 0;
 
-  var empClass = isStso ? "STSO" : (isLtso ? "LTSO" : (isTrain ? classKey : (isPt ? "PT" : "FT")));
-  var position = isStso ? "STSO" : (isLtso ? "LTSO" : (isTrain ? classKey : "TSO"));
+  var empClass = isStso ? "STSO" : (isLtso ? "LTSO" : (isPt ? "PT" : "FT"));
+  var position = isStso ? "STSO" : (isLtso ? "LTSO" : "TSO");
   var ptHours = S && S.state ? Number(S.state.ptHoursPerDay) : NaN;
   var ptPaid = Number.isFinite(ptHours) && ptHours > 0 ? Math.min(12, ptHours) : 4;
   var linePaid = isPt ? ptPaid : (shift.paid || 8);
@@ -436,13 +397,11 @@ function createLineForClass(S, classKey, id, shift, sex, isShortfall, isPt) {
     isStso: isStso,
     isLtso: isLtso,
     isExtra: isExtra,
-    isTraining: isTrain,
-    trainingClass: isTrain ? classKey : null,
     extraPositionId: isExtra ? classKey.substring(6) : null,
     extraName: isExtra ? classKey.substring(6) : null,
     opsFte: opsFte,
-    sex: isTrain ? "" : sex,
-    function: isShortfall ? "-" : (isTrain ? "TRAINING" : "PAX"),
+    sex: sex,
+    function: isShortfall ? "-" : (isExtra ? "" : "PAX"),
     isShortfall: !!isShortfall,
     rdoDays: rdoDays,
     rdoHard: hard.length > 0,
