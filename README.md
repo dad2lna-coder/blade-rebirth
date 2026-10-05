@@ -8,6 +8,8 @@ Sibling runtime: [BLADE-Runtime](https://github.com/dad2lna-coder/BLADE-Runtime)
 
 **Status:** frontend shell. Tabs load from `modules/manifest.json`. The Setup tab mounts the generate modal. Other tabs are stubs. Alpha event names are reserved on the shared bus. No intro and no staffing logic.
 
+**Live:** https://dad2lna-coder.github.io/blade-rebirth/
+
 ## Run
 
 ```bash
