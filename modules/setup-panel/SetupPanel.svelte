@@ -1,8 +1,6 @@
 <script lang="ts">
   import GenerateModal from "./GenerateModal.svelte";
-  import { createEmptySession } from "./session";
-
-  const session = createEmptySession();
+  import { session } from "./session";
   let open = $state(false);
   let trigger: HTMLButtonElement | undefined = $state();
 

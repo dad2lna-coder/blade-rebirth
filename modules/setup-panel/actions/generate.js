@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** Setup owns generate: snapshot inputs, then run allocation + line schedule. */
 import { parseStartDate, addDays, weekdaySun0 } from "../utils/dates.js";
+import { notifySessionLines } from "../sessionBus.js";
 
 export function buildScheduleForLine(S, line, days) {
   var arr = [];
@@ -74,6 +75,7 @@ export function generate(S) {
     S.state.issues.push("Set FT/PT male and female headcounts above zero, or add an extra type with people.");
     S.state.lines = [];
     S.state.schedule = {};
+    notifySessionLines();
     if (S.renderAll) S.renderAll();
     if (S.updateStatus) S.updateStatus("No staff to schedule.");
     return;
@@ -275,6 +277,7 @@ export function generate(S) {
       (S.state.issues.length ? " \u00b7 " + S.state.issues.length + " note(s)" : "")
     );
   }
+  notifySessionLines();
 }
 
 export function attachGenerate(S) {

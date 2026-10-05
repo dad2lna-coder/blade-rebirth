@@ -54,3 +54,7 @@ export function createEmptySession(): SetupSession {
 
   return session;
 }
+
+/** The session Build already mounts. Ship reads this — it does not keep lines. */
+export const session = createEmptySession();
+

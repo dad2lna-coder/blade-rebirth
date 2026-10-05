@@ -6,7 +6,7 @@ Alpha is the reference implementation and stays where it is. This repo is a clea
 
 Sibling runtime: [BLADE-Runtime](https://github.com/dad2lna-coder/BLADE-Runtime).
 
-**Status:** frontend shell. Stages load from `modules/manifest.json`: Plan, Build, Review (Lines / Coverage / Reports), Ship, Present, Teams. Plan is a timeline stub with no upload. Build owns the Setup mount (period, FTE, function coverage, generate later). Ship owns the eBid 45-column mount. Present is empty. No intro. Engines stay in Alpha.
+**Status:** frontend shell. Stages load from `modules/manifest.json`: Plan, Build, Review (Lines / Coverage / Reports), Ship, Present, Teams. Plan is a timeline stub with no upload. Build owns the Setup mount and the live lines session. Ship exports the eBid 45-column CSV from that same session. Present is empty. No intro.
 
 **Live:** https://dad2lna-coder.github.io/blade-rebirth/
 
