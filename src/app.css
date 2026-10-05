@@ -215,6 +215,31 @@ button:disabled {
   color: var(--fill-ink);
 }
 
+.subtabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 16px 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.subtab {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.subtab[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--fill);
+}
+
 .stage {
   flex: 1;
   display: flex;
@@ -265,14 +290,16 @@ button:disabled {
     font-size: 15px;
   }
 
-  .tabs {
+  .tabs,
+  .subtabs {
     flex-wrap: wrap;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .theme-btn,
-  .tab {
+  .tab,
+  .subtab {
     transition: none;
   }
 }

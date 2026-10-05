@@ -1,38 +1,58 @@
 [
   {
-    "id": "setup",
-    "label": "Setup",
-    "mount": "#mount-setup",
-    "entry": "modules/setup-panel/SetupPanel.svelte"
+    "id": "plan",
+    "label": "Plan",
+    "mount": "#mount-plan",
+    "entry": "modules/plan/PlanPanel.svelte"
   },
   {
-    "id": "lines",
-    "label": "Lines",
-    "mount": "#mount-lines",
-    "entry": "modules/lines/LinesPanel.svelte"
+    "id": "build",
+    "label": "Build",
+    "mount": "#mount-build",
+    "entry": "modules/build/BuildPanel.svelte"
   },
   {
-    "id": "coverage",
-    "label": "Coverage",
-    "mount": "#mount-coverage",
-    "entry": "modules/coverage/CoveragePanel.svelte"
+    "id": "review",
+    "label": "Review",
+    "mount": "#mount-review",
+    "entry": "modules/review/ReviewPanel.svelte",
+    "subs": [
+      {
+        "id": "lines",
+        "label": "Lines",
+        "mount": "#mount-lines",
+        "entry": "modules/lines/LinesPanel.svelte"
+      },
+      {
+        "id": "coverage",
+        "label": "Coverage",
+        "mount": "#mount-coverage",
+        "entry": "modules/coverage/CoveragePanel.svelte"
+      },
+      {
+        "id": "reports",
+        "label": "Reports",
+        "mount": "#mount-reports",
+        "entry": "modules/reports/ReportsPanel.svelte"
+      }
+    ]
   },
   {
-    "id": "reports",
-    "label": "Reports",
-    "mount": "#mount-reports",
-    "entry": "modules/reports/ReportsPanel.svelte"
+    "id": "ship",
+    "label": "Ship",
+    "mount": "#mount-ship",
+    "entry": "modules/ship/ShipPanel.svelte"
   },
   {
-    "id": "bid-planner",
-    "label": "Bid Planner",
-    "mount": "#mount-bid-planner",
-    "entry": "modules/bid-planner/BidPlannerPanel.svelte"
+    "id": "present",
+    "label": "Present",
+    "mount": "#mount-present",
+    "entry": "modules/present/PresentPanel.svelte"
   },
   {
-    "id": "team-builder",
-    "label": "Team Builder",
-    "mount": "#mount-team-builder",
-    "entry": "modules/team-builder/TeamBuilderPanel.svelte"
+    "id": "teams",
+    "label": "Teams",
+    "mount": "#mount-teams",
+    "entry": "modules/teams/TeamsPanel.svelte"
   }
 ]

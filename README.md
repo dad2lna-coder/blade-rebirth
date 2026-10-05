@@ -6,7 +6,7 @@ Alpha is the reference implementation and stays where it is. This repo is a clea
 
 Sibling runtime: [BLADE-Runtime](https://github.com/dad2lna-coder/BLADE-Runtime).
 
-**Status:** frontend shell. Tabs load from `modules/manifest.json`. The Setup tab mounts the generate modal. Other tabs are stubs. Alpha event names are reserved on the shared bus. No intro and no staffing logic.
+**Status:** frontend shell. Stages load from `modules/manifest.json`: Plan, Build, Review (Lines / Coverage / Reports), Ship, Present, Teams. Plan is a timeline stub with no upload. Build owns the Setup mount (period, FTE, function coverage, generate later). Ship owns the eBid 45-column mount. Present is empty. No intro. Engines stay in Alpha.
 
 **Live:** https://dad2lna-coder.github.io/blade-rebirth/
 
@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-The shell opens on the Setup mount. F1–F6 switch tabs. Dark and Presentation are saved in this browser.
+The shell opens on Plan. F1–F6 switch stages. Review opens Lines, Coverage, and Reports. Dark and Presentation are saved in this browser.
 
 ---
 
@@ -27,13 +27,12 @@ Build balanced security bid lines from shift force and FTE, then show whether th
 
 | Surface | Job |
 | --- | --- |
-| Setup | Weeks, FTE by role and sex, BAG and DFO pools, shifts, Generate |
-| Lines | Bid-line table, row model, Excel export |
-| Coverage | 30-minute headcount, shift mix, coverage cuts |
-| Reports | Passenger, bag-DFO, total, and pool views; capacity math |
+| Plan | Bid-period timeline. No upload. |
+| Build | Setup mount: period, FTE, function coverage. Generate later. |
+| Review | Lines, coverage, and reports |
+| Ship | eBid 45-column sheet |
+| Present | Presentation mount |
 | Teams | Architecture, auto-form by RDO, drag-drop boards |
-| Capacity | Checkpoint lane demand and mod-set board |
-| Demand | Flight-volume import vs PAX staffing capacity |
 
 Generate assigns function duties (BAG / DFO / PAX) in the same pass as the lines. Session state imports and exports as JSON. Airport hours, terminals, and checkpoints live in an airfield setup.
 

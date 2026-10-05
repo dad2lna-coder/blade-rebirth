@@ -1,21 +1,31 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { isTabId, panels, TABS, type TabId } from "./lib/tabs";
+  import {
+    hashFor,
+    locationState,
+    panels,
+    TABS,
+    type TabId,
+  } from "./lib/tabs";
   import { applyTheme, readTheme, type ThemeName } from "./lib/theme";
 
-  let active = $state<TabId>(tabFromLocation());
+  let active = $state<TabId>(locationState(locationHash()).tab);
+  let sub = $state<string | null>(locationState(locationHash()).sub);
   let theme = $state<ThemeName>(readTheme());
   let now = $state(new Date());
 
-  function tabFromLocation(): TabId {
-    if (typeof location === "undefined") return TABS[0]?.id ?? "setup";
-    const id = location.hash.replace(/^#/, "");
-    return isTabId(id) ? id : (TABS[0]?.id ?? "setup");
+  const activeTab = $derived(TABS.find((tab) => tab.id === active) ?? TABS[0]);
+  const subs = $derived(activeTab?.subs ?? []);
+
+  function locationHash(): string {
+    return typeof location === "undefined" ? "" : location.hash;
   }
 
-  function select(id: TabId) {
+  function select(id: TabId, nextSub: string | null = null) {
+    const tab = TABS.find((item) => item.id === id);
     active = id;
-    const next = `#${id}`;
+    sub = nextSub ?? tab?.subs[0]?.id ?? null;
+    const next = hashFor(id, sub);
     if (location.hash !== next) history.replaceState(null, "", next);
   }
 
@@ -42,7 +52,9 @@
   );
 
   function onHash() {
-    active = tabFromLocation();
+    const next = locationState(location.hash);
+    active = next.tab;
+    sub = next.sub;
   }
 
   function onKey(event: KeyboardEvent) {
@@ -74,18 +86,25 @@
       return;
     }
 
-    if (
-      isArrow &&
-      target instanceof HTMLElement &&
-      target.getAttribute("role") === "tab"
-    ) {
-      event.preventDefault();
-      const index = TABS.findIndex((tab) => tab.id === active);
-      const delta = event.key === "ArrowRight" ? 1 : -1;
-      const next = TABS[(index + delta + TABS.length) % TABS.length];
-      select(next.id);
-      document.getElementById(`tab-${next.id}`)?.focus();
+    if (!(target instanceof HTMLElement) || target.getAttribute("role") !== "tab") return;
+    if (!isArrow) return;
+
+    event.preventDefault();
+    const delta = event.key === "ArrowRight" ? 1 : -1;
+    const inSub = target.closest(".subtabs");
+
+    if (inSub && subs.length) {
+      const index = subs.findIndex((item) => item.id === sub);
+      const next = subs[(index + delta + subs.length) % subs.length];
+      select(active, next.id);
+      document.getElementById(`sub-${next.id}`)?.focus();
+      return;
     }
+
+    const index = TABS.findIndex((tab) => tab.id === active);
+    const next = TABS[(index + delta + TABS.length) % TABS.length];
+    select(next.id);
+    document.getElementById(`tab-${next.id}`)?.focus();
   }
 
   onMount(() => {
@@ -140,8 +159,8 @@
     <span class="status">Shell</span>
   </div>
 
-  <div class="tabs" role="tablist" aria-label="Sections">
-    {#each TABS as tab (tab.id)}
+  <div class="tabs" role="tablist" aria-label="Stages">
+    {#each TABS as tab, index (tab.id)}
       <button
         type="button"
         class="tab"
@@ -152,11 +171,32 @@
         tabindex={active === tab.id ? 0 : -1}
         onclick={() => select(tab.id)}
       >
-        <span class="fkey">[{tab.key}]</span>
+        {#if index < 5}
+          <span class="fkey">{String(index + 1).padStart(2, "0")}</span>
+        {/if}
         {tab.label}
       </button>
     {/each}
   </div>
+
+  {#if subs.length}
+    <div class="subtabs" role="tablist" aria-label="Review">
+      {#each subs as item (item.id)}
+        <button
+          type="button"
+          class="subtab"
+          id="sub-{item.id}"
+          role="tab"
+          aria-selected={sub === item.id}
+          aria-controls={item.mountId}
+          tabindex={sub === item.id ? 0 : -1}
+          onclick={() => select(active, item.id)}
+        >
+          {item.label}
+        </button>
+      {/each}
+    </div>
+  {/if}
 
   <main class="stage">
     {#each TABS as tab (tab.id)}
@@ -170,7 +210,11 @@
         hidden={active !== tab.id}
       >
         {#if Panel}
-          <Panel />
+          {#if tab.id === "review"}
+            <Panel sub={sub ?? "lines"} />
+          {:else}
+            <Panel />
+          {/if}
         {:else}
           <p class="unwired">Not wired yet.</p>
         {/if}
@@ -179,7 +223,7 @@
   </main>
 
   <footer class="foot">
-    <span>Mount <b>{active}</b></span>
+    <span>Mount <b>{sub ? `${active}/${sub}` : active}</b></span>
     <span>Keys <b>F1-F{TABS.length}</b></span>
   </footer>
 </div>
