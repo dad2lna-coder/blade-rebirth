@@ -63,7 +63,7 @@ export function lineMatchesCoverageFilter(S, line, dayOff, view) {
     if (line.function === "BAG") duty = "BAG";
     else if (line.function === "DFO" || line.function === "PAX") duty = line.function === "DFO" ? "DFO" : "PAX";
     else if (line.function === "-") duty = "-";
-    else if (line.function === "TRAINING" || line.isTraining || line.trainingClass) duty = "TRAINING";
+    else if (line.function === "TRAINING" || line.isTraining || line.trainingClass || line.empClass === "ESTI" || line.empClass === "MSTI") duty = "TRAINING";
     else if (counted) duty = "PAX";
     else duty = "";
   }

@@ -69,8 +69,9 @@ export function generate(S) {
   ((S.state && S.state.extraPositions) || []).forEach(function (p) {
     extraHead += (+p.m || 0) + (+p.f || 0);
   });
+  var trainingHead = (+S.state.esti || 0) + (+S.state.msti || 0);
   var total = S.state.ftM + S.state.ftF + S.state.ptM + S.state.ptF;
-  if (total <= 0 && extraHead <= 0) {
+  if (total <= 0 && extraHead <= 0 && trainingHead <= 0) {
     S.state.issues.push("Set FT/PT male and female headcounts above zero, or add an extra type with people.");
     S.state.lines = [];
     S.state.schedule = {};
@@ -153,12 +154,13 @@ export function generate(S) {
     stsoLines = S.buildSupervisoryLines(stsoAlloc.counts || {}, "STSO");
   }
   var extraLines = S.buildExtraPositionLines ? S.buildExtraPositionLines() : [];
+  var trainingLines = S.buildTrainingClassLines ? S.buildTrainingClassLines() : [];
 
   S.state.lines = [].concat(
     lockedTso, tsoLines,
     lockedLtso, ltsoLines,
     lockedStso, stsoLines,
-    lockedOther, extraLines
+    lockedOther, extraLines, trainingLines
   );
 
   var days = S.state.weekCount * 7;
@@ -191,6 +193,7 @@ export function generate(S) {
     var extraIds = {};
     lines.forEach(function (l) {
       if (!(l.isExtra || l.extraPositionId)) return;
+      if (l.isTraining || (S.isTrainingLine && S.isTrainingLine(l))) return;
       var inOps = S.lineInOpsCoverage ? S.lineInOpsCoverage(l) : !!l.opsFte;
       if (!inOps) return;
       extraIds[+l.id] = true;
@@ -231,6 +234,7 @@ export function generate(S) {
         return !reservedTeam && !!t.extraGroup;
       });
     });
+    if (S.formTrainingTeams) S.formTrainingTeams();
   })();
   if (S.renderTeams) {
     try { S.renderTeams(); } catch (e) {}
@@ -266,7 +270,10 @@ export function generate(S) {
       " \u00b7 PT " + S.state.ptM + "/" + S.state.ptF +
       " \u00b7 LTSO " + S.state.ltsoM + "/" + S.state.ltsoF +
       " \u00b7 STSO " + S.state.stsoM + "/" + S.state.stsoF +
+      " \u00b7 ESTI " + (S.state.esti || 0) +
+      " \u00b7 MSTI " + (S.state.msti || 0) +
       (extraHead ? " \u00b7 other FTE " + extraHead : "") +
+      (S.state.ignoreGender ? " \u00b7 gender ignored" : "") +
       ") \u00b7 " + mode + " \u00b7 " + S.state.weekCount + " wk" +
       (fcMode && fcMode !== "none" ? " \u00b7 " + String(fcMode).toUpperCase() + " duties" : "") +
       (S.state.issues.length ? " \u00b7 " + S.state.issues.length + " note(s)" : "")

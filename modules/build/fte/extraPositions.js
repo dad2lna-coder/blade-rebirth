@@ -137,7 +137,7 @@ export function extraCardsHtml(list, shifts) {
       '<label>Name <input type="text" data-extra-name="' + pos.id + '" value="' + safeName + '" style="width:7rem"></label>' +
       '<label>Male <input type="number" min="0" data-extra-m="' + pos.id + '" value="' + num0(pos.m) + '" style="width:4.5rem"></label>' +
       '<label>Female <input type="number" min="0" data-extra-f="' + pos.id + '" value="' + num0(pos.f) + '" style="width:4.5rem"></label>' +
-      '<label>Counted <select data-extra-ops="' + pos.id + '">' +
+      '<label>Ops FTE <select data-extra-ops="' + pos.id + '">' +
       '<option value="no"' + (ops === "no" ? " selected" : "") + ">No</option>" +
       '<option value="yes"' + (ops === "yes" ? " selected" : "") + ">Yes</option>" +
       "</select></label>" +
@@ -307,7 +307,8 @@ export function buildExtraPositionLines(S) {
         var sex = takeExtraSex();
         if (!sex) return;
         placedGlobal[sex]++;
-        slot.sex = sex;
+        slot.filled = true;
+        slot.sex = (S.state && S.state.ignoreGender) ? "" : sex;
 
         var empClass = extraEmpClass(slot.def, S);
         var workDays = S.targetWorkDays ? S.targetWorkDays(slot.def.id, empClass) : ((+slot.def.paid || 8) >= 10 ? 4 : 5);
@@ -321,7 +322,7 @@ export function buildExtraPositionLines(S) {
     // Build lines for this extra position class
     var idBase = 30000 + pi * 1000;
     slots.forEach(function (slot, idx) {
-      if (!slot.sex) return;
+      if (!slot.filled) return;
       out.push({
         id: idBase + idx + 1,
         lineCode: typeName + " " + String(idx + 1).padStart(2, "0"),

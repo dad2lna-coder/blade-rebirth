@@ -32,10 +32,11 @@ export function buildCertifiedPools(fc, scheduler) {
   }
 
   function unused(role, sex) {
+    var ignore = api.state && api.state.ignoreGender;
     return lines.filter(function (l) {
       if (l.isExtra || l.extraPositionId) return false;
       var el = ensureEligible(l);
-      return api.lineRoleKey(l) === role && l.sex === sex && !el.bag && !el.dfo;
+      return api.lineRoleKey(l) === role && (ignore || l.sex === sex) && !el.bag && !el.dfo;
     });
   }
 
@@ -136,8 +137,8 @@ export function buildCertifiedPools(fc, scheduler) {
         var unusedPt = unused("TSO", sex).filter(isPtLine);
         var ftDfo = lines.filter(function (l) {
           if (!l || l.isExtra || l.extraPositionId) return false;
-          if (api.lineRoleKey(l) !== "TSO" || l.sex !== sex) return false;
-          if (isPtLine(l)) return false;
+          if (api.lineRoleKey(l) !== "TSO" || isPtLine(l)) return false;
+          if (!(api.state && api.state.ignoreGender) && l.sex !== sex) return false;
           var el = ensureEligible(l);
           return el.dfo && !el.bag;
         });

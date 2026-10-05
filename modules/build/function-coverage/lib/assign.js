@@ -31,10 +31,11 @@ function ensureEligible(line) {
 
 function unused(role, sex, fc) {
   var lines = api.state.lines || [];
+  var ignore = api.state && api.state.ignoreGender;
   return lines.filter(function (l) {
     if (l.isExtra || l.extraPositionId) return false;
     var el = ensureEligible(l);
-    return lineRoleKey(l) === role && l.sex === sex && !el.bag && !el.dfo;
+    return lineRoleKey(l) === role && (ignore || l.sex === sex) && !el.bag && !el.dfo;
   });
 }
 

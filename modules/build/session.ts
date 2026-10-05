@@ -6,6 +6,7 @@ import { attachSetupState } from "./stores/setupStore.js";
 import { attachCertPools } from "./certs/certs.js";
 import { attachClassGenerate } from "./actions/classGenerate.js";
 import { buildExtraPositionLines, lineInOpsCoverage, opsFteYes } from "./fte/extraPositions.js";
+import { attachTrainingClasses } from "./fte/trainingClasses.js";
 import { attachShiftMath } from "./shifts/shiftMath.js";
 import { isValidTimeText, timeToMin } from "./shifts/time.js";
 
@@ -43,6 +44,7 @@ export function createEmptySession(): SetupSession {
   attachSetupState(session);
   attachShiftMath(session);
   attachAllocation(session);
+  attachTrainingClasses(session);
   attachCertPools(session);
   attachFunctionCoverage(session);
   session.opsFteYes = opsFteYes;

@@ -37,7 +37,7 @@ function rotationDuty(S, lineId, dayIndex) {
 function resolveWorkDayDuty(line, duty) {
   if (duty === "TRAINING") return "TRAINING";
   if (duty === "-" || duty === "BAG" || duty === "PAX" || duty === "DFO") return duty;
-  if (line.isTraining || line.trainingClass) {
+  if (line.isTraining || line.trainingClass || line.empClass === "ESTI" || line.empClass === "MSTI" || line.extraName === "ESTI" || line.extraName === "MSTI") {
     return "TRAINING";
   }
   if (line.function === "BAG") return "BAG";

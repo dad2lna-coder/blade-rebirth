@@ -31,6 +31,8 @@ export function getModalClassOptions(extraPositions: SetupSession["state"]["extr
     { key: "STSO", label: "STSO" },
     { key: "LTSO", label: "LTSO" },
     { key: "TSO", label: "TSO" },
+    { key: "MSTI", label: "MSTI" },
+    { key: "ESTI", label: "ESTI" },
   ];
 
   for (const pos of extraPositions) {
@@ -50,8 +52,12 @@ function ensureClass(current: string, options: ClassOption[]): string {
   return fallbackClass(options);
 }
 
-export function isTrainingClass(_classKey: string): boolean {
-  return false;
+export function isTrainingClass(classKey: string): boolean {
+  return classKey === "MSTI" || classKey === "ESTI";
+}
+
+function genderIgnored(session: SetupSession): boolean {
+  return !!session.state.ignoreGender;
 }
 
 /** Band key from the shift, or its crew group. Not a scheduler. */
@@ -138,8 +144,9 @@ export function initPerShiftTargetsForClass(
     const hc = session.getClassHeadcount
       ? session.getClassHeadcount(classKey)
       : { M: 0, F: 0, total: 0 };
-    if (isTrainingClass(classKey)) {
-      let remTrain = hc.total;
+    const unsexed = isTrainingClass(classKey) || genderIgnored(session);
+    if (unsexed) {
+      let remTrain = hc.total || hc.M + hc.F;
       for (let index = 0; index < shifts.length; index++) {
         const take = Math.floor(remTrain / (shifts.length - index));
         targets[shifts[index].id].M = take;
@@ -210,14 +217,17 @@ export function targetModel(session: SetupSession, ui: ModalUi): TargetModel {
   const shifts = session.state.shifts || [];
   const { sumM, sumF } = sumsFor(shifts, targets);
   const training = isTrainingClass(classKey);
-  const info = training
+  const unsexed = training || genderIgnored(session);
+  const cap = unsexed ? hc.total || hc.M + hc.F : 0;
+  const info = unsexed
     ? "Total: " +
       (sumM + sumF) +
       " / " +
-      hc.total +
+      cap +
       " targeted (" +
-      Math.max(0, hc.total - (sumM + sumF)) +
-      " shortfall)"
+      Math.max(0, cap - (sumM + sumF)) +
+      " shortfall)" +
+      (genderIgnored(session) && !training ? " · gender ignored" : "")
     : "Male: " +
       sumM +
       " / " +
@@ -236,8 +246,8 @@ export function targetModel(session: SetupSession, ui: ModalUi): TargetModel {
     const count = targets[shift.id] || { M: 0, F: 0 };
     const male = +count.M || 0;
     const female = +count.F || 0;
-    const canIncM = !training && sumM < hc.M;
-    const canIncF = !training && sumF < hc.F;
+    const canIncM = !unsexed && sumM < hc.M;
+    const canIncF = !unsexed && sumF < hc.F;
     return {
       shiftId: shift.id,
       name: shift.name || shift.id,
@@ -247,8 +257,8 @@ export function targetModel(session: SetupSession, ui: ModalUi): TargetModel {
       total: male + female,
       maleUp: canIncM,
       femaleUp: canIncF,
-      totalUp: training ? sumM + sumF < hc.total : canIncM || canIncF,
-      sexLocked: training,
+      totalUp: unsexed ? sumM + sumF < cap : canIncM || canIncF,
+      sexLocked: unsexed,
     };
   });
 
@@ -270,18 +280,20 @@ export function adjustTarget(session: SetupSession, ui: ModalUi, shiftId: string
     : { M: 0, F: 0, total: 0 };
   const { sumM, sumF } = sumsFor(session.state.shifts || [], targets);
   const training = isTrainingClass(classKey);
+  const unsexed = training || genderIgnored(session);
+  const cap = unsexed ? hc.total || hc.M + hc.F : 0;
 
   if (kind === "m-up") {
-    if (sumM < hc.M) row.M++;
+    if (!unsexed && sumM < hc.M) row.M++;
   } else if (kind === "m-down") {
-    if (row.M > 0) row.M--;
+    if (!unsexed && row.M > 0) row.M--;
   } else if (kind === "f-up") {
-    if (sumF < hc.F) row.F++;
+    if (!unsexed && sumF < hc.F) row.F++;
   } else if (kind === "f-down") {
-    if (row.F > 0) row.F--;
+    if (!unsexed && row.F > 0) row.F--;
   } else if (kind === "tot-up") {
-    if (training) {
-      if (sumM + sumF < hc.total) row.M++;
+    if (unsexed) {
+      if (sumM + sumF < cap) row.M++;
     } else if (sumM < hc.M) row.M++;
     else if (sumF < hc.F) row.F++;
   } else if (row.F > 0) row.F--;
@@ -369,7 +381,9 @@ export function weekdayBands(session: SetupSession): { empty: true } | { empty: 
     empty: false,
     rows: keys.map((key) => ({
       label: getBandLabel(session, key),
-      cells: counts[key].map((cell) => cell.M + "M / " + cell.F + "F (" + cell.total + ")"),
+      cells: counts[key].map((cell) =>
+        session.state.ignoreGender ? String(cell.total) : cell.M + "M / " + cell.F + "F (" + cell.total + ")",
+      ),
     })),
   };
 }

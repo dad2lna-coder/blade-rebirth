@@ -43,6 +43,9 @@
   let ltsoF = $state(int(live.state.ltsoF));
   let stsoM = $state(int(live.state.stsoM));
   let stsoF = $state(int(live.state.stsoF));
+  let esti = $state(int(live.state.esti));
+  let msti = $state(int(live.state.msti));
+  let ignoreGender = $state(!!live.state.ignoreGender);
 
   let shifts = $state(live.state.shifts as any[]);
   let extras = $state((live.state.extraPositions || []) as any[]);
@@ -85,6 +88,9 @@
     live.state.ltsoF = Math.max(0, ltsoF);
     live.state.stsoM = Math.max(0, stsoM);
     live.state.stsoF = Math.max(0, stsoF);
+    live.state.esti = Math.max(0, esti);
+    live.state.msti = Math.max(0, msti);
+    live.state.ignoreGender = ignoreGender;
     const store = setupStore as Record<string, unknown>;
     store.fte = {
       ftM: live.state.ftM,
@@ -97,6 +103,8 @@
       ltsoF: live.state.ltsoF,
       stsoM: live.state.stsoM,
       stsoF: live.state.stsoF,
+      esti: live.state.esti,
+      msti: live.state.msti,
     };
     store.period = {
       open: live.state.open,
@@ -104,6 +112,7 @@
       weeks: live.state.weekCount,
       start,
       seed: live.state.generateSeed,
+      ignoreGender: live.state.ignoreGender,
     };
     store.extraPositions = extras;
     store.functionCoverage = fc;
@@ -338,7 +347,7 @@
 
   <p class="lede">
     <strong>BLADE</strong> staffing balancer. <strong>FT / PT</strong> are operational TSO.
-    <strong>LTSO / STSO</strong> are management. Other FTE is a position with counted or not.
+    <strong>LTSO / STSO</strong> are management. ESTI and MSTI are training counts, not a second PT path.
   </p>
 
   <section class="card" aria-labelledby="period-title">
@@ -397,7 +406,21 @@
         {@render count("cfg-stso-m", "Male", stsoM, (n) => (stsoM = n))}
         {@render count("cfg-stso-f", "Female", stsoF, (n) => (stsoF = n))}
       </div>
-      <p class="hint">Add any other FTE as a position. Counted joins the ops headcount. Not counted is included only on days with an ops duty (BAG, DFO, PAX).</p>
+      <h3>Training</h3>
+      <div class="sex">
+        {@render count("cfg-esti", "ESTI", esti, (n) => (esti = n))}
+        {@render count("cfg-msti", "MSTI", msti, (n) => (msti = n))}
+      </div>
+      <label class="check">
+        <input
+          type="checkbox"
+          id="cfg-ignore-gender"
+          checked={ignoreGender}
+          onchange={(event) => (ignoreGender = (event.currentTarget as HTMLInputElement).checked)}
+        />
+        Ignore gender
+      </label>
+      <p class="hint">When on, generate does not assign or balance by sex. Counts are still male + female. Useful for PT.</p>
       <div class="row-actions">
         <button type="button" class="btn" id="btn-add-position" onclick={addExtra}>+ Add position</button>
       </div>
@@ -411,7 +434,7 @@
             {@render count("extra-m-" + pos.id, "Male", int(pos.m), (n) => (pos.m = n))}
             {@render count("extra-f-" + pos.id, "Female", int(pos.f), (n) => (pos.f = n))}
             <label>
-              Counted
+              Ops FTE
               <select
                 data-extra-ops={pos.id}
                 value={pos.opsFte ? "yes" : "no"}
@@ -765,7 +788,7 @@
   </div>
 </section>
 
-<GenerateModal {open} {session} onclose={closeModal} />
+<GenerateModal {open} {session} {ignoreGender} onIgnoreGender={(checked) => (ignoreGender = checked)} onclose={closeModal} />
 
 <style>
   .build,

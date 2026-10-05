@@ -40,6 +40,9 @@ export type SetupState = {
   schedule: Record<string, string[] | undefined>;
   functionRotation: Record<string, string[] | undefined>;
   shiftCrewGroups: CrewGroup[];
+  ignoreGender?: boolean;
+  esti?: number;
+  msti?: number;
 };
 
 export type Headcount = { M: number; F: number; total: number };

@@ -255,7 +255,7 @@ export function buildLines(S, counts) {
       shiftName: slot.def.name,
       shiftLabel: S.shiftLabel(slot.def),
       empClass: slot.person.empClass,
-      sex: slot.person.sex,
+      sex: (S.state && S.state.ignoreGender) ? "" : slot.person.sex,
       function: "",
       rdoDays: slot.rdoDays,
       rdoHard: slot.rdoHard,
@@ -397,7 +397,8 @@ export function buildSupervisoryLines(S, supCounts, supType) {
         return;
       }
       placedGlobal[sex]++;
-      slot.sex = sex;
+      slot.filled = true;
+      slot.sex = (S.state && S.state.ignoreGender) ? "" : sex;
     });
   });
 
@@ -407,7 +408,7 @@ export function buildSupervisoryLines(S, supCounts, supType) {
   var id = startId;
 
   slots.forEach(function (slot) {
-    if (!slot.sex) return;
+    if (!slot.filled) return;
     lines.push({
       id: id,
       lineCode: supType + " " + String(lines.length + 1).padStart(2, "0"),

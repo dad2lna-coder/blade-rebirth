@@ -29,10 +29,14 @@
   let {
     open,
     session,
+    ignoreGender = false,
+    onIgnoreGender,
     onclose,
   }: {
     open: boolean;
     session: SetupSession;
+    ignoreGender?: boolean;
+    onIgnoreGender?: (checked: boolean) => void;
     onclose: () => void;
   } = $props();
 
@@ -73,6 +77,14 @@
       document.body.style.overflow = previousOverflow;
     };
   });
+
+  function toggleIgnore(event: Event) {
+    const checked = (event.currentTarget as HTMLInputElement).checked;
+    session.state.ignoreGender = checked;
+    ui.perShiftTargets = {};
+    ui.revision++;
+    onIgnoreGender?.(checked);
+  }
 
   const options = $derived(getModalClassOptions(session.state.extraPositions));
   const targets = $derived.by(() => {
@@ -134,6 +146,16 @@
           id="btn-generate-all"
           onclick={() => generateAll(session, ui)}>[GEN] Full Roster Generate</button
         >
+        <label class="ignore">
+          <input
+            type="checkbox"
+            id="generate-ignore-gender"
+            checked={ignoreGender}
+            onchange={toggleIgnore}
+          />
+          Ignore gender
+        </label>
+        <p class="setup-note">When on, generate does not assign or balance by sex. Headcount is still male + female. Useful for PT.</p>
         <span class="setup-or">Or Generate Single Class:</span>
         <div id="generate-class-buttons" class="setup-row">
           {#each options as opt (opt.key)}
@@ -702,6 +724,21 @@
     font-weight: 400;
     font-size: 13px;
     white-space: nowrap;
+  }
+
+  .ignore {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    font-weight: 500;
+  }
+
+  .setup-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
   }
 
   .results {
