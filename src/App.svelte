@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { isTabId, TABS, type TabId } from "./lib/tabs";
   import { applyTheme, readTheme, type ThemeName } from "./lib/theme";
+  import SetupPanel from "./lib/setup/SetupPanel.svelte";
 
   let active = $state<TabId>(tabFromLocation());
   let theme = $state<ThemeName>(readTheme());
@@ -58,6 +59,18 @@
           target.tagName === "TEXTAREA" ||
           target.isContentEditable)
       ) {
+        return;
+      }
+
+      if (document.getElementById("generate-modal")?.classList.contains("is-open")) {
+        if (event.key === "Escape") return;
+        if (
+          /^F[1-6]$/.test(event.key) ||
+          event.key === "ArrowRight" ||
+          event.key === "ArrowLeft"
+        ) {
+          event.preventDefault();
+        }
         return;
       }
 
@@ -166,7 +179,11 @@
         aria-labelledby="tab-{tab.id}"
         hidden={active !== tab.id}
       >
-        <p class="unwired">Not wired yet</p>
+        {#if tab.id === "setup"}
+          <SetupPanel />
+        {:else}
+          <p class="unwired">Not wired yet</p>
+        {/if}
       </div>
     {/each}
   </main>

@@ -6,7 +6,7 @@ Alpha is the reference implementation and stays where it is. This repo is a clea
 
 Sibling runtime: [BLADE-Runtime](https://github.com/dad2lna-coder/BLADE-Runtime).
 
-**Status:** frontend shell only. Tabs open empty mounts. No intro and no staffing logic.
+**Status:** frontend shell. The Setup tab mounts the generate modal. Other setup sections and the other tabs are not wired. No intro and no staffing logic.
 
 ## Run
 
