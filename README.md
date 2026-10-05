@@ -6,7 +6,16 @@ Alpha is the reference implementation and stays where it is. This repo is a clea
 
 Sibling runtime: [BLADE-Runtime](https://github.com/dad2lna-coder/BLADE-Runtime).
 
-**Status:** empty project. No app yet.
+**Status:** frontend shell only. Tabs open empty mounts. No intro and no staffing logic.
+
+## Run
+
+```bash
+npm install
+npm run dev
+```
+
+The shell opens on the Setup mount. F1–F6 switch tabs. Dark and Presentation are saved in this browser.
 
 ---
 
