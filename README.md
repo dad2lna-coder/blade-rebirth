@@ -28,7 +28,7 @@ Build balanced security bid lines from shift force and FTE, then show whether th
 | Surface | Job |
 | --- | --- |
 | Plan | Bid-period timeline. No upload. |
-| Build | Setup mount: period, FTE, function coverage. Generate later. |
+| Build | Setup inputs on the shared session: period, seed, FTE, function coverage, cert pools, shifts. GENERATE uses them. |
 | Review | Lines, coverage, and reports |
 | Ship | eBid 45-column sheet |
 | Present | Presentation mount |

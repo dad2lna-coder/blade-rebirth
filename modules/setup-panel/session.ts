@@ -1,6 +1,7 @@
 import type { SetupSession } from "./types";
 import { attachGenerate } from "./actions/generate.js";
 import { attachAllocation } from "./actions/allocation.js";
+import { attachFunctionCoverage } from "./function-coverage/attach.js";
 import { attachSetupState } from "./stores/setupStore.js";
 import { attachCertPools } from "./utils/certs.js";
 import { attachClassGenerate } from "./utils/classGenerate.js";
@@ -12,8 +13,7 @@ import { attachTrainingClasses } from "./utils/trainingClasses.js";
 /**
  * Setup session. Generate and single-class generate run Alpha's engine.
  * Parity and DFO cert approve stay stubs.
- * FTE, hours, and shifts are Alpha's defaults — the setup form is not ported,
- * and generate cannot build lines without them.
+ * The Build form writes period, seed, FTE, coverage, certs, and shifts here.
  */
 export function createEmptySession(): SetupSession {
   const session: SetupSession & Record<string, unknown> = {
@@ -46,6 +46,7 @@ export function createEmptySession(): SetupSession {
   attachAllocation(session);
   attachTrainingClasses(session);
   attachCertPools(session);
+  attachFunctionCoverage(session);
   session.opsFteYes = opsFteYes;
   session.lineInOpsCoverage = lineInOpsCoverage;
   session.buildExtraPositionLines = () => buildExtraPositionLines(session);
@@ -57,4 +58,3 @@ export function createEmptySession(): SetupSession {
 
 /** The session Build already mounts. Ship reads this — it does not keep lines. */
 export const session = createEmptySession();
-
