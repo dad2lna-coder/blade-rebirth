@@ -1,0 +1,38 @@
+[
+  {
+    "id": "setup",
+    "label": "Setup",
+    "mount": "#mount-setup",
+    "entry": "modules/setup-panel/SetupPanel.svelte"
+  },
+  {
+    "id": "lines",
+    "label": "Lines",
+    "mount": "#mount-lines",
+    "entry": "modules/lines/LinesPanel.svelte"
+  },
+  {
+    "id": "coverage",
+    "label": "Coverage",
+    "mount": "#mount-coverage",
+    "entry": "modules/coverage/CoveragePanel.svelte"
+  },
+  {
+    "id": "reports",
+    "label": "Reports",
+    "mount": "#mount-reports",
+    "entry": "modules/reports/ReportsPanel.svelte"
+  },
+  {
+    "id": "bid-planner",
+    "label": "Bid Planner",
+    "mount": "#mount-bid-planner",
+    "entry": "modules/bid-planner/BidPlannerPanel.svelte"
+  },
+  {
+    "id": "team-builder",
+    "label": "Team Builder",
+    "mount": "#mount-team-builder",
+    "entry": "modules/team-builder/TeamBuilderPanel.svelte"
+  }
+]

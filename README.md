@@ -6,7 +6,7 @@ Alpha is the reference implementation and stays where it is. This repo is a clea
 
 Sibling runtime: [BLADE-Runtime](https://github.com/dad2lna-coder/BLADE-Runtime).
 
-**Status:** frontend shell. The Setup tab mounts the generate modal. Other setup sections and the other tabs are not wired. No intro and no staffing logic.
+**Status:** frontend shell. Tabs load from `modules/manifest.json`. The Setup tab mounts the generate modal. Other tabs are stubs. Alpha event names are reserved on the shared bus. No intro and no staffing logic.
 
 ## Run
 
