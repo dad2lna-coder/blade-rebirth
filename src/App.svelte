@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { isTabId, TABS, type TabId } from "./lib/tabs";
   import { applyTheme, readTheme, type ThemeName } from "./lib/theme";
-  import SetupPanel from "./lib/setup/SetupPanel.svelte";
+  import SetupPanel from "../modules/setup-panel/SetupPanel.svelte";
 
   let active = $state<TabId>(tabFromLocation());
   let theme = $state<ThemeName>(readTheme());
