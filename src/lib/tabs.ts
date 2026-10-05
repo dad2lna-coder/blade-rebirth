@@ -50,8 +50,6 @@ const LEGACY: Record<string, { tab: TabId; sub: string | null }> = {
   lines: { tab: "review", sub: "lines" },
   coverage: { tab: "review", sub: "coverage" },
   reports: { tab: "review", sub: "reports" },
-  "bid-planner": { tab: "ship", sub: null },
-  "team-builder": { tab: "teams", sub: null },
 };
 
 export function locationState(hash: string): { tab: TabId; sub: string | null } {
