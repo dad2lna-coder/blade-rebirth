@@ -420,6 +420,27 @@
     ioNote = "Cleared session.";
   }
 
+  function resolveBag() {
+    commit();
+    const lines = live.state.lines || [];
+    if (!lines.length) {
+      ioNote = "Generate lines first.";
+      return;
+    }
+    const days = Math.max(1, int(live.state.weekCount, 1)) * 7;
+    const api = live as SetupSession & {
+      resolveBagDuties?: (fc: unknown, days: number) => { shortfalls?: string[] };
+    };
+    const result = api.resolveBagDuties
+      ? api.resolveBagDuties(live.state.functionCoverage, days)
+      : { shortfalls: ["Resolve baggage days is not attached."] };
+    const shortfalls = result && result.shortfalls ? result.shortfalls : [];
+    ioNote = shortfalls.length
+      ? "Resolved baggage days. Shortfalls: " + shortfalls.join("; ")
+      : "Resolved baggage days.";
+    tick += 1;
+  }
+
   onMount(() => onSessionLines(() => {
     tick += 1;
   }));
@@ -764,6 +785,7 @@
         </select>
       </label>
       <button type="button" class="btn" id="fc-add-band" onclick={addBand}>+ Add shift</button>
+      <button type="button" class="btn" id="btn-resolve-bag" onclick={resolveBag}>Resolve baggage days</button>
     </div>
     {#if bandNote}<p class="hint">{bandNote}</p>{/if}
     <div class="scroll" id="fc-bands-wrap">

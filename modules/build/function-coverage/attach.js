@@ -11,7 +11,7 @@ import {
 } from "./lib/duty.js";
 import { bindPoolsApi, ensureFunctionCoverage, getFunctionMode } from "./lib/pools.js";
 import { bindShiftsApi } from "./lib/shifts.js";
-import { bindAssignApi, generateFunctionAssignments } from "./lib/assign.js";
+import { bindAssignApi, generateFunctionAssignments, resolveBagDuties } from "./lib/assign.js";
 
 export function attachFunctionCoverage(S) {
   if (!S) return;
@@ -30,5 +30,8 @@ export function attachFunctionCoverage(S) {
   S.getFunctionMode = getFunctionMode;
   S.generateFunctionAssignments = function (opts) {
     return generateFunctionAssignments(opts);
+  };
+  S.resolveBagDuties = function (fc, days) {
+    return resolveBagDuties(fc, days);
   };
 }

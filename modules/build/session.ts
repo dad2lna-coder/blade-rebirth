@@ -5,6 +5,8 @@ import { attachFunctionCoverage } from "./function-coverage/attach.js";
 import { attachSetupState } from "./stores/setupStore.js";
 import { attachCertPools } from "./certs/certs.js";
 import { attachClassGenerate } from "./actions/classGenerate.js";
+import { attachParityReport } from "./actions/parityReport.js";
+import { attachDfoCertBalance } from "./actions/dfoCertBalance.js";
 import { buildExtraPositionLines, lineInOpsCoverage, opsFteYes } from "./fte/extraPositions.js";
 import { attachTrainingClasses } from "./fte/trainingClasses.js";
 import { attachShiftMath } from "./shifts/shiftMath.js";
@@ -12,7 +14,7 @@ import { isValidTimeText, timeToMin } from "./shifts/time.js";
 
 /**
  * Setup session. Generate and single-class generate run Alpha's engine.
- * Parity and DFO cert approve stay stubs.
+ * Parity, DFO cert approve, and baggage-day resolve run on this same session.
  * The Build form writes period, seed, FTE, coverage, certs, and shifts here.
  */
 export function createEmptySession(): SetupSession {
@@ -52,6 +54,8 @@ export function createEmptySession(): SetupSession {
   session.buildExtraPositionLines = () => buildExtraPositionLines(session);
   attachGenerate(session);
   attachClassGenerate(session);
+  attachParityReport(session);
+  attachDfoCertBalance(session);
 
   return session;
 }

@@ -10,6 +10,7 @@ import {
   lineOnShift
 } from "./shifts.js";
 import { positionMatchesSex } from "../../fte/gender.js";
+import { notifySessionLines } from "../../sessionBus.js";
 
 let api = null;
 
@@ -161,6 +162,70 @@ export function applyShiftFunctionRequirements(fc) {
   });
 
   return { diagnostics: diagnostics, configured: configured };
+}
+
+/** Repaint per-day BAG duties on DFO lines to hit shift requirements. Lines do not move. */
+export function resolveBagDuties(fc, days) {
+  if (api.readFunctionCoverageFromDom) api.readFunctionCoverageFromDom();
+  fc = fc || ensureFunctionCoverage();
+  days = days || (api.state && api.state.weekCount ? api.state.weekCount * 7 : 7);
+
+  var lines = (api.state && api.state.lines) || [];
+  if (!lines.length) {
+    if (api.updateStatus) api.updateStatus("Generate lines first.");
+    return { diagnostics: [], shortfalls: ["No lines generated."] };
+  }
+
+  lines.forEach(function (l) {
+    if (l.isExtra || l.extraPositionId) return;
+    var el = ensureEligible(l);
+    if (!el.bag && el.dfo) {
+      for (var d = 0; d < days; d++) {
+        if (worksDay(l, d)) setDuty(l.id, d, null);
+      }
+    }
+  });
+
+  var rotated = rotateShiftBagDuties(fc, days);
+
+  lines.forEach(function (l) {
+    if (l.isExtra || l.extraPositionId) return;
+    var el = ensureEligible(l);
+    if (!el.bag && el.dfo) {
+      for (var d = 0; d < days; d++) {
+        if (!worksDay(l, d)) continue;
+        if (!getDuty(l.id, d)) setDuty(l.id, d, "DFO");
+      }
+    }
+  });
+
+  var applied = applyShiftFunctionRequirements(fc);
+  var diagnostics = applied.diagnostics || [];
+  if (rotated && rotated.length) {
+    diagnostics.forEach(function (row) {
+      for (var i = 0; i < rotated.length; i++) {
+        if (rotated[i].role !== row.role || rotated[i].shiftId !== row.shiftId) continue;
+        row.assigned = rotated[i].assigned;
+        if (rotated[i].status === "SHORT") row.status = "SHORT";
+      }
+    });
+  }
+
+  var shortfalls = [];
+  diagnostics.forEach(function (row) {
+    if (row.status !== "SHORT") return;
+    var label = row.shiftStart || row.shiftLabel || row.shiftId;
+    shortfalls.push(row.role + " " + label + " shift: " + row.assigned + " / " + row.requiredMin);
+  });
+
+  paintAfterAssign();
+  notifySessionLines();
+
+  var statusMsg = "Resolved baggage days.";
+  if (shortfalls.length) statusMsg += " Shortfalls: " + shortfalls.join("; ");
+  if (api.updateStatus) api.updateStatus(statusMsg);
+
+  return { diagnostics: diagnostics, shortfalls: shortfalls };
 }
 
 /**
