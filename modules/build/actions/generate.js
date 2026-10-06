@@ -33,6 +33,7 @@ export function buildScheduleForLine(S, line, days) {
   return arr.slice(0, days);
 }
 
+/** Generate: main controller - orchestrates setup inputs → allocation → line building → results. */
 export function generate(S) {
   S.state.issues = [];
   if (S.collectSetupInputs) S.collectSetupInputs();
@@ -231,7 +232,7 @@ export function generate(S) {
           var inOps = S.lineInOpsCoverage ? S.lineInOpsCoverage(line) : !!line.opsFte;
           if (!inOps) return false;
         }
-        if (!extraIds[+m]) return true;
+        if (extraIds[+m]) return true;
         if (t.extraGroup && extraByType[t.extraGroup] && extraByType[t.extraGroup].indexOf(m) >= 0) return true;
         return !reservedTeam && !!t.extraGroup;
       });
@@ -255,7 +256,7 @@ export function generate(S) {
   var dMin = Math.min.apply(null, dayTotals);
   var dMax = Math.max.apply(null, dayTotals);
   if (dMax - dMin > Math.max(2, Math.ceil(total * 0.15))) {
-    S.state.issues.push("Day-of-week TSO headcount still varies " + dMin + "\u2013" + dMax + " (RDO stagger). Prefer varied seeds are already applied.");
+    S.state.issues.push("Day-of-week TSO headcount still varies " + dMin + "–" + dMax + " (RDO stagger). Prefer varied seeds are already applied.");
   }
   try {
     if (S.renderAll) S.renderAll();
@@ -269,16 +270,16 @@ export function generate(S) {
   if (S.updateStatus) {
     S.updateStatus(
       "Scheduled " + S.state.lines.length + " lines (FT " + S.state.ftM + "/" + S.state.ftF +
-      " \u00b7 PT " + S.state.ptM + "/" + S.state.ptF +
-      " \u00b7 LTSO " + S.state.ltsoM + "/" + S.state.ltsoF +
-      " \u00b7 STSO " + S.state.stsoM + "/" + S.state.stsoF +
-      " \u00b7 ESTI " + (S.state.esti || 0) +
-      " \u00b7 MSTI " + (S.state.msti || 0) +
-      (extraHead ? " \u00b7 other FTE " + extraHead : "") +
+      " · PT " + S.state.ptM + "/" + S.state.ptF +
+      " · LTSO " + S.state.ltsoM + "/" + S.state.ltsoF +
+      " · STSO " + S.state.stsoM + "/" + S.state.stsoF +
+      " · ESTI " + (S.state.esti || 0) +
+      " · MSTI " + (S.state.msti || 0) +
+      (extraHead ? " · other FTE " + extraHead : "") +
       genderStatusNote(S.state) +
-      ") \u00b7 " + mode + " \u00b7 " + S.state.weekCount + " wk" +
-      (fcMode && fcMode !== "none" ? " \u00b7 " + String(fcMode).toUpperCase() + " duties" : "") +
-      (S.state.issues.length ? " \u00b7 " + S.state.issues.length + " note(s)" : "")
+      ") · " + mode + " · " + S.state.weekCount + " wk" +
+      (fcMode && fcMode !== "none" ? " · " + String(fcMode).toUpperCase() + " duties" : "") +
+      (S.state.issues.length ? " · " + S.state.issues.length + " note(s)" : "")
     );
   }
   notifySessionLines();
