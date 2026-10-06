@@ -44,6 +44,8 @@ export function formExtraTeams(S) {
     });
   });
 
+  // FIX: Keep non-extra members unless their id is an extra being rebuilt.
+  // Match trainingClasses pattern: keep unless id is an extra being rebuilt.
   S.teams.teams.forEach(function (t) {
     var tName = String(t.name || "").trim().toUpperCase();
     var reservedTeam = reserved[tName] || reserved[String(t.extraGroup || "").trim().toUpperCase()];
@@ -52,14 +54,10 @@ export function formExtraTeams(S) {
       return;
     }
     t.members = (t.members || []).filter(function (m) {
-      var line = lines.find(function (l) { return +l.id === +m; });
-      if (line && (line.isExtra || line.extraPositionId)) {
-        var inOps = S.lineInOpsCoverage ? S.lineInOpsCoverage(line) : !!line.opsFte;
-        if (!inOps) return false;
-      }
-      if (extraIds[+m]) return true;
-      if (t.extraGroup && extraByType[t.extraGroup] && extraByType[t.extraGroup].indexOf(m) >= 0) return true;
-      return !reservedTeam && !!t.extraGroup;
+      // Keep member unless they are an extra being rebuilt (in extraIds)
+      // This preserves non-extra members on user teams
+      if (extraIds[+m]) return false;
+      return true;
     });
   });
 

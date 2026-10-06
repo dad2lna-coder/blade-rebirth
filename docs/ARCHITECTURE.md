@@ -7,9 +7,8 @@
    - `setupStore` mirrors critical state for quick access
 
 2. **Generation Phase** (Build stage):
-   - **DOM Boundary Extraction**: `snapshotGenerateInputs(S)` captures all DOM-bound inputs (shifts, seed, counts, etc.) before generation begins
-   - `pureGenerate(snapshot)` runs completely off the main thread with no DOM access or side effects
-   - `applyGenerateResults(S, result)` applies results and triggers UI refresh
+   - `generate(S)` orchestrates setup reads → validation → allocation → line building → schedule building → team formation → UI refresh
+   - Heavy logic extracted to dedicated modules (`buildScheduleForLine.js`, `formExtraTeams.js`, `validateGenerateInputs.js`)
    - Lines stored in `session.state.lines`, Schedule/RDO patterns in `session.state.schedule`
 
 3. **Analysis Phase** (Review stage):

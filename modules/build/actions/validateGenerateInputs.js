@@ -31,6 +31,9 @@ export function validateGenerateInputs(S) {
 
   if (total <= 0 && extraHead <= 0 && trainingHead <= 0) {
     S.state.issues.push("Set FT/PT male and female headcounts above zero, or add an extra type with people.");
+    // FIX: Clear stale lines/schedule like before
+    S.state.lines = [];
+    S.state.schedule = {};
     return false;
   }
 

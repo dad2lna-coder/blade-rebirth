@@ -14,6 +14,8 @@ export function generate(S) {
   S.state.issues = [];
   if (S.collectSetupInputs) S.collectSetupInputs();
   if (S.readShiftsFromDom) S.readShiftsFromDom();
+  // FIX: Read extra positions from DOM before generate so extras on screen feed generate
+  if (S.readExtraPositionsFromDom) S.readExtraPositionsFromDom();
 
   // Handle active seed for generation
   var seedInput = String(S.state.generateSeed || "random").trim().toLowerCase();
@@ -25,8 +27,14 @@ export function generate(S) {
   }
 
   if (!validateGenerateInputs(S)) {
+    // Show the first validation failure message, if any
+    var statusMsg = "Validation failed.";
+    if (S.state.issues && S.state.issues.length > 0) {
+      // Show the first (most relevant) validation issue message
+      statusMsg = S.state.issues[0];
+    }
     if (S.renderAll) S.renderAll();
-    if (S.updateStatus) S.updateStatus("No shifts defined.");
+    if (S.updateStatus) S.updateStatus(statusMsg);
     notifySessionLines();
     return;
   }
