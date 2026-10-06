@@ -105,7 +105,7 @@ export type SetupSession = {
   generateClass: (classKey: string, targets: Record<string, SexCount> | null) => void;
   generate: () => void;
   checkParity: (classKey: string, bands: string[]) => ParityResult;
-  approveParitySwaps: (pairs: ParitySwap[]) => void;
+  approveParitySwaps: (pairs: ParitySwap[]) => boolean;
   proposeDfoCertBalance: (classKey: string) => DfoResult;
   approveDfoCertBalance: (result: DfoResult, selected: DfoProposal[]) => void;
 };
