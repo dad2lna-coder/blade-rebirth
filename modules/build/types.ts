@@ -107,7 +107,7 @@ export type SetupSession = {
   checkParity: (classKey: string, bands: string[]) => ParityResult;
   approveParitySwaps: (pairs: ParitySwap[]) => boolean;
   proposeDfoCertBalance: (classKey: string) => DfoResult;
-  approveDfoCertBalance: (result: DfoResult, selected: DfoProposal[]) => void;
+  approveDfoCertBalance: (result: DfoResult, selected: DfoProposal[]) => boolean;
 };
 
 export type ModalUi = {

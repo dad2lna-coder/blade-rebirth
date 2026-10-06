@@ -1,4 +1,4 @@
-import type { SetupSession } from "./types";
+import type { SetupSession, ParitySwap, DfoResult, DfoProposal } from "./types";
 import { attachGenerate } from "./actions/generate.js";
 import { attachAllocation } from "./actions/allocation.js";
 import { attachFunctionCoverage } from "./function-coverage/attach.js";
@@ -33,9 +33,9 @@ export function createEmptySession(): SetupSession {
     generateClass: () => {},
     generate: () => {},
     checkParity: () => ({ summary: "", proposals: [] }),
-    approveParitySwaps: () => {},
+    approveParitySwaps: (pairs: ParitySwap[]) => false,
     proposeDfoCertBalance: () => ({ summary: "", proposals: [], mode: "cert_move" }),
-    approveDfoCertBalance: () => {},
+    approveDfoCertBalance: (result: DfoResult, selected: DfoProposal[]) => false,
   };
 
   session.BADGES = ["badge-open", "badge-am", "badge-pm", "badge-close", "badge-4x10"];
