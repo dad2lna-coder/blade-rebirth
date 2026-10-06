@@ -80,6 +80,28 @@
     note = "Team disbanded. Lines stay in the session.";
     notifySessionLines();
   }
+
+  function newTeam() {
+    const teams = savedTeams();
+    const n = teams.length + 1;
+    teams.push({ id: "T" + Date.now(), name: String(n).padStart(2, "0"), members: [], phase: "AM" });
+    writeTeams(live, teams);
+    note = "Empty team added.";
+    notifySessionLines();
+  }
+
+  function place(lineId: unknown, targetId: string) {
+    if (!targetId) return;
+    const id = lineId;
+    const next = savedTeams().map((team) => {
+      const members = team.members.filter((member) => String(member) !== String(id));
+      if (team.id === targetId) members.push(id);
+      return { ...team, members };
+    });
+    writeTeams(live, next);
+    note = "Assignment saved on this session.";
+    notifySessionLines();
+  }
 </script>
 
 <section class="teams" aria-label="Teams">
@@ -101,6 +123,7 @@
     <label>Start window <input type="number" min="0" max="180" step="15" bind:value={startWindowMin} /></label>
     <label class="check"><input type="checkbox" bind:checked={allowOneRdo} /> Allow 1 matching RDO</label>
     <button type="submit">Auto-form</button>
+    <button type="button" onclick={newTeam}>New team</button>
     <button type="button" onclick={clearTeams}>Clear</button>
   </form>
   {#if note}<p class="hint">{note}</p>{/if}
@@ -120,6 +143,14 @@
               {#each team.members as person (person.id)}
                 <li>
                   <span>{person.lineCode} · {person.role} · {person.sex} · {person.start || "—"} · {person.rdoLabel}</span>
+                  <select aria-label="Move to" onchange={(event) => place(person.id, (event.currentTarget as HTMLSelectElement).value)}>
+                    <option value="">Move to…</option>
+                    {#each view.teams as target (target.key)}
+                      {#if target.key !== team.key}
+                        <option value={target.key}>{target.name}</option>
+                      {/if}
+                    {/each}
+                  </select>
                   <button type="button" onclick={() => removeMember(team.key, person.id)}>Remove</button>
                 </li>
               {/each}
@@ -136,7 +167,15 @@
   {#if view.open.length}
     <ul class="open">
       {#each view.open as person (person.id)}
-        <li>{person.lineCode} · {person.role} · {person.sex} · {person.start || "—"} · {person.rdoLabel}</li>
+        <li>
+          <span>{person.lineCode} · {person.role} · {person.sex} · {person.start || "—"} · {person.rdoLabel}</span>
+          <select aria-label="Assign to" onchange={(event) => place(person.id, (event.currentTarget as HTMLSelectElement).value)}>
+            <option value="">Assign to…</option>
+            {#each view.teams as target (target.key)}
+              <option value={target.key}>{target.name}</option>
+            {/each}
+          </select>
+        </li>
       {/each}
     </ul>
   {:else}
@@ -203,6 +242,7 @@
   }
 
   input,
+  select,
   button {
     min-height: 44px;
     padding: 6px 8px;
@@ -239,7 +279,8 @@
   }
 
   article header button,
-  li button {
+  li button,
+  li select {
     min-height: 32px;
     padding: 4px 8px;
     background: transparent;
