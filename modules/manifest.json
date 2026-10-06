@@ -21,19 +21,19 @@
         "id": "lines",
         "label": "Lines",
         "mount": "#mount-lines",
-        "entry": "modules/lines/LinesPanel.svelte"
+        "entry": "modules/review/lines/LinesPanel.svelte"
       },
       {
         "id": "coverage",
         "label": "Coverage",
         "mount": "#mount-coverage",
-        "entry": "modules/coverage/CoveragePanel.svelte"
+        "entry": "modules/review/coverage/CoveragePanel.svelte"
       },
       {
         "id": "reports",
         "label": "Reports",
         "mount": "#mount-reports",
-        "entry": "modules/reports/ReportsPanel.svelte"
+        "entry": "modules/review/reports/ReportsPanel.svelte"
       }
     ]
   },

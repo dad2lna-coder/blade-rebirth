@@ -1,7 +1,7 @@
 <script lang="ts">
-  import CoveragePanel from "../coverage/CoveragePanel.svelte";
-  import LinesPanel from "../lines/LinesPanel.svelte";
-  import ReportsPanel from "../reports/ReportsPanel.svelte";
+  import CoveragePanel from "./coverage/CoveragePanel.svelte";
+  import LinesPanel from "./lines/LinesPanel.svelte";
+  import ReportsPanel from "./reports/ReportsPanel.svelte";
   import type { Component } from "svelte";
 
   let { sub = "lines" }: { sub?: string } = $props();

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { session } from "../build/session";
-  import { onSessionLines } from "../build/sessionBus.js";
+  import { session } from "../../build/session";
+  import { onSessionLines } from "../../build/sessionBus.js";
 
   let tick = $state(0);
 

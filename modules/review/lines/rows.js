@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { parseStartDate, addDays, weekdaySun0 } from "../build/period/dates.js";
+import { parseStartDate, addDays, weekdaySun0 } from "../../build/period/dates.js";
 
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

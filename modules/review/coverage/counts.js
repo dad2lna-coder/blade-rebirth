@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Coverage counts from the live session. Alpha opsFte + dash-duty rules. Not a line store. */
-import { parseStartDate, addDays, weekdaySun0 } from "../build/period/dates.js";
-import { countedSex, linePositionKey } from "../build/fte/gender.js";
+import { parseStartDate, addDays, weekdaySun0 } from "../../build/period/dates.js";
+import { countedSex, linePositionKey } from "../../build/fte/gender.js";
 
 var DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

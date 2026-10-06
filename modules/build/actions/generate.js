@@ -5,7 +5,7 @@
  */
 import { buildScheduleForLine } from "../schedule/buildScheduleForLine.js";
 import { formExtraTeams } from "../teams/formExtraTeams.js";
-import { validateGenerateInputs } from "../setup/validateGenerateInputs.js";
+import { validateGenerateInputs } from "./validateGenerateInputs.js";
 import { notifySessionLines } from "../sessionBus.js";
 import { applyPositionGender, genderStatusNote } from "../fte/gender.js";
 

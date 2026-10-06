@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Inline line edits. Mutates the setup session in place — not a second store. */
-import { notifySessionLines } from "../build/sessionBus.js";
-import { parseStartDate, addDays, weekdaySun0 } from "../build/period/dates.js";
+import { notifySessionLines } from "../../build/sessionBus.js";
+import { parseStartDate, addDays, weekdaySun0 } from "../../build/period/dates.js";
 import { offsetForDow } from "./rows.js";
 
 function findLine(S, lineId) {
