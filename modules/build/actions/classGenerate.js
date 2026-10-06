@@ -2,7 +2,7 @@
 /** Single-class roster generator. Rebuilds lines for one class while keeping
  *  all other classes' lines, shifts, RDOs, duties, and certs untouched.
  */
-import { buildScheduleForLine } from "./generate.js";
+import { buildScheduleForLine } from "../schedule/buildScheduleForLine.js";
 import { assignCertPoolsToLines } from "../certs/certAssign.js";
 import { applyPositionGender, classIgnoresGender, policyFor } from "../fte/gender.js";
 

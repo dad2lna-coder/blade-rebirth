@@ -1,37 +1,13 @@
 // @ts-nocheck
-/** Setup owns generate: snapshot inputs, then run allocation + line schedule. */
-import { parseStartDate, addDays, weekdaySun0 } from "../period/dates.js";
+/** Main generation orchestrator. Coordinates setup reads → validation →
+ *  allocation → line building → schedule building → team formation → UI refresh.
+ *  Heavy logic is extracted to dedicated modules; this file is a thin coordinator.
+ */
+import { buildScheduleForLine } from "../schedule/buildScheduleForLine.js";
+import { formExtraTeams } from "../teams/formExtraTeams.js";
+import { validateGenerateInputs } from "../setup/validateGenerateInputs.js";
 import { notifySessionLines } from "../sessionBus.js";
 import { applyPositionGender, genderStatusNote } from "../fte/gender.js";
-
-export function buildScheduleForLine(S, line, days) {
-  var arr = [];
-  var rdo = new Set((line.rdoDays || []).map(Number));
-  var need = S.targetWorkDays(line.shiftId, line.empClass);
-  var base = parseStartDate(S.state.startDate);
-  var weeks = Math.ceil(days / 7);
-  for (var w = 0; w < weeks; w++) {
-    var weekOffsets = [];
-    for (var i = 0; i < 7; i++) {
-      var off = w * 7 + i;
-      if (off >= days) break;
-      weekOffsets.push({ off: off, dow: weekdaySun0(addDays(base, off)) });
-    }
-    var weekVal = {};
-    weekOffsets.forEach(function (x) {
-      weekVal[x.off] = rdo.has(x.dow) ? "RDO" : "WORK";
-    });
-    var workOffs = weekOffsets
-      .filter(function (x) { return weekVal[x.off] === "WORK"; })
-      .sort(function (a, b) { return a.dow - b.dow; });
-    workOffs.forEach(function (x, idx) {
-      weekVal[x.off] = idx < need ? "WORK" : "RDO";
-    });
-    weekOffsets.forEach(function (x) { arr[x.off] = weekVal[x.off]; });
-  }
-  for (var i = 0; i < days; i++) if (!arr[i]) arr[i] = "RDO";
-  return arr.slice(0, days);
-}
 
 /** Generate: main controller - orchestrates setup inputs → allocation → line building → results. */
 export function generate(S) {
@@ -48,45 +24,10 @@ export function generate(S) {
     S.state.activeSeed = Number.isFinite(parsedSeed) ? Math.abs(parsedSeed) : 42;
   }
 
-  if (!S.state.shifts || !S.state.shifts.length) {
-    S.state.issues.push("Add at least one shift with a start and end time.");
+  if (!validateGenerateInputs(S)) {
     if (S.renderAll) S.renderAll();
     if (S.updateStatus) S.updateStatus("No shifts defined.");
-    return;
-  }
-  S.state.shifts.forEach(function (s) {
-    if (!s.rdoHard || !s.rdoHard.length) return;
-    var need = S.rdoCountForShift(s, "FT");
-    if (s.rdoHard.length !== need) {
-      if (s.rdoHard.length > need) {
-        S.state.issues.push(s.name + ": hard RDOs checked " + s.rdoHard.length + " day(s) exceeds pattern target " + need + " (paid " + s.paid + "h). Extra hard days kept; work-day count drops.");
-      } else {
-        S.state.issues.push(s.name + ": hard RDOs checked " + s.rdoHard.length + " day(s); padded to pattern target " + need + " (paid " + s.paid + "h).");
-      }
-    }
-  });
-
-  if (S.readExtraPositionsFromDom) S.readExtraPositionsFromDom();
-  var extraHead = 0;
-  ((S.state && S.state.extraPositions) || []).forEach(function (p) {
-    extraHead += (+p.m || 0) + (+p.f || 0);
-  });
-  var trainingHead = (+S.state.esti || 0) + (+S.state.msti || 0);
-  var total = S.state.ftM + S.state.ftF + S.state.ptM + S.state.ptF;
-  if (total <= 0 && extraHead <= 0 && trainingHead <= 0) {
-    S.state.issues.push("Set FT/PT male and female headcounts above zero, or add an extra type with people.");
-    S.state.lines = [];
-    S.state.schedule = {};
     notifySessionLines();
-    if (S.renderAll) S.renderAll();
-    if (S.updateStatus) S.updateStatus("No staff to schedule.");
-    return;
-  }
-  var openMin = S.timeToMin(S.state.open);
-  var closeMin = S.timeToMin(S.state.close);
-  if (closeMin <= openMin) {
-    S.state.issues.push("Close time must be after open time.");
-    if (S.renderAll) S.renderAll();
     return;
   }
 
@@ -135,8 +76,9 @@ export function generate(S) {
 
   var tsoLines = [];
   var mode = "extras";
+  var total = S.state.ftM + S.state.ftF + S.state.ptM + S.state.ptF;
   if (total > 0) {
-    var allocation = S.allocateShiftHeadcounts(total, openMin, closeMin);
+    var allocation = S.allocateShiftHeadcounts(total, S.timeToMin(S.state.open), S.timeToMin(S.state.close));
     var counts = adjustCountsForLocked(allocation.counts, lockedTso, isTsoLine);
     mode = allocation.mode;
     tsoLines = S.buildLines(counts);
@@ -145,6 +87,8 @@ export function generate(S) {
 
   var ltsoTotal = Math.max(0, (S.state.ltsoM + S.state.ltsoF) - lockedLtso.length);
   var ltsoLines = [];
+  var openMin = S.timeToMin(S.state.open);
+  var closeMin = S.timeToMin(S.state.close);
   if (ltsoTotal > 0) {
     var ltsoAlloc = S.allocateSupervisoryHeadcounts(ltsoTotal, openMin, closeMin, "ltsoForce", tsoLines);
     ltsoLines = S.buildSupervisoryLines(ltsoAlloc.counts || {}, "LTSO");
@@ -181,68 +125,12 @@ export function generate(S) {
   }
   if (S.assignCertPools) S.assignCertPools();
 
-  var dayTotals = [];
-  (function formExtraTeamsOnSameLines() {
-    var lines = S.state.lines || [];
-    var reserved = { TSO: true, LTSO: true, STSO: true, FT: true, PT: true };
-    function extraTypeKey(l) {
-      var name = String(l.extraName || l.position || "").trim();
-      if (name && !reserved[name]) return name;
-      return "";
-    }
-    S.teams = S.teams || { teams: [] };
-    if (!Array.isArray(S.teams.teams)) S.teams.teams = [];
-    var extraByType = {};
-    var extraIds = {};
-    lines.forEach(function (l) {
-      if (!(l.isExtra || l.extraPositionId)) return;
-      if (l.isTraining || (S.isTrainingLine && S.isTrainingLine(l))) return;
-      var inOps = S.lineInOpsCoverage ? S.lineInOpsCoverage(l) : !!l.opsFte;
-      if (!inOps) return;
-      extraIds[+l.id] = true;
-      var key = extraTypeKey(l);
-      if (!key) return;
-      if (!extraByType[key]) extraByType[key] = [];
-      extraByType[key].push(l.id);
-    });
-    Object.keys(extraByType).forEach(function (typeName) {
-      var team = S.teams.teams.find(function (t) { return t.extraGroup === typeName || t.name === typeName; });
-      if (!team) {
-        team = { id: "TX-" + typeName, name: typeName, members: [], followMe: false, phase: null, extraGroup: typeName };
-        S.teams.teams.push(team);
-      }
-      team.extraGroup = typeName;
-      team.name = typeName;
-      var have = {};
-      (team.members || []).forEach(function (m) { have[+m] = true; });
-      extraByType[typeName].forEach(function (id) {
-        if (!have[+id]) team.members.push(id);
-      });
-    });
-    S.teams.teams.forEach(function (t) {
-      var tName = String(t.name || "").trim().toUpperCase();
-      var reservedTeam = reserved[tName] || reserved[String(t.extraGroup || "").trim().toUpperCase()];
-      if (t.extraGroup && extraByType[t.extraGroup]) {
-        t.members = extraByType[t.extraGroup].slice();
-        return;
-      }
-      t.members = (t.members || []).filter(function (m) {
-        var line = lines.find(function (l) { return +l.id === +m; });
-        if (line && (line.isExtra || line.extraPositionId)) {
-          var inOps = S.lineInOpsCoverage ? S.lineInOpsCoverage(line) : !!line.opsFte;
-          if (!inOps) return false;
-        }
-        if (extraIds[+m]) return true;
-        if (t.extraGroup && extraByType[t.extraGroup] && extraByType[t.extraGroup].indexOf(m) >= 0) return true;
-        return !reservedTeam && !!t.extraGroup;
-      });
-    });
-    if (S.formTrainingTeams) S.formTrainingTeams();
-  })();
+  formExtraTeams(S);
   if (S.renderTeams) {
     try { S.renderTeams(); } catch (e) {}
   }
 
+  var dayTotals = [];
   var workingLines = S.state.lines.filter(function (l) {
     if (l.isLtso || l.isStso) return false;
     if (l.isExtra || l.extraPositionId) return !!l.opsFte;
@@ -255,6 +143,10 @@ export function generate(S) {
   }
   var dMin = Math.min.apply(null, dayTotals);
   var dMax = Math.max.apply(null, dayTotals);
+  var extraHead = 0;
+  ((S.state && S.state.extraPositions) || []).forEach(function (p) {
+    extraHead += (+p.m || 0) + (+p.f || 0);
+  });
   if (dMax - dMin > Math.max(2, Math.ceil(total * 0.15))) {
     S.state.issues.push("Day-of-week TSO headcount still varies " + dMin + "–" + dMax + " (RDO stagger). Prefer varied seeds are already applied.");
   }
