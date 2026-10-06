@@ -1,126 +1,119 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { session } from "../build/session";
-  import { onSessionLines } from "../build/sessionBus.js";
+  import { notifySessionLines, onSessionLines } from "../build/sessionBus.js";
+  import { autoFormTeams, collectPool, writeTeams } from "./form.js";
 
   let tick = $state(0);
+  let stsoPer = $state(1);
+  let ltsoPer = $state(1);
+  let tsoPer = $state(6);
+  let startWindowMin = $state(30);
+  let allowOneRdo = $state(false);
+  let note = $state("");
 
   const live = session as typeof session & {
     state: Record<string, unknown>;
-    teams?: { teams?: Array<{ id?: string; name?: string; members?: unknown[] }> };
+    teams?: { teams?: Array<{ id?: string; name?: string; phase?: string; members?: unknown[] }> };
   };
 
   onMount(() => onSessionLines(() => {
     tick += 1;
   }));
 
-  function num(value: unknown) {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function dateLabel(value: unknown) {
-    if (value == null || value === "") return "";
-    if (typeof value === "string") return value.slice(0, 10);
-    if (typeof value === "object") {
-      const dated = value as { toISODate?: () => string; toFormat?: (fmt: string) => string };
-      if (typeof dated.toISODate === "function") return String(dated.toISODate() || "").slice(0, 10);
-      if (typeof dated.toFormat === "function") return String(dated.toFormat("yyyy-MM-dd") || "").slice(0, 10);
-    }
-    return "";
-  }
-
-  const snapshot = $derived.by(() => {
+  const view = $derived.by(() => {
     void tick;
-    const state = live.state || {};
-    const lines = Array.isArray(state.lines) ? state.lines : [];
-    const teams = (live.teams && live.teams.teams) || [];
-    let assigned = 0;
-    const rows = teams.map((team, index) => {
-      const members = Array.isArray(team.members) ? team.members.length : 0;
-      assigned += members;
+    const pool = collectPool(live) as Array<Record<string, any>>;
+    const byId = new Map(pool.map((person) => [person.id, person]));
+    const teams = ((live.teams && live.teams.teams) || []).map((team, index) => {
+      const members = (team.members || []).map((id) => byId.get(id) || byId.get(Number(id))).filter(Boolean);
       return {
         key: team.id || String(index),
         name: team.name || team.id || "Team",
+        phase: team.phase || (members[0] && members[0].startMin < 14 * 60 ? "AM" : "PM"),
         members,
       };
     });
+    const assigned = new Set(teams.flatMap((team) => team.members.map((person) => person.id)));
     return {
-      start: dateLabel(state.startDate),
-      weeks: num(state.weekCount),
-      open: typeof state.open === "string" ? state.open : "",
-      close: typeof state.close === "string" ? state.close : "",
-      lines: lines.length,
-      teamCount: rows.length,
-      assigned,
-      rows,
-      fte: num(state.ftM) + num(state.ftF) + num(state.ptM) + num(state.ptF) + num(state.ltsoM) + num(state.ltsoF) + num(state.stsoM) + num(state.stsoF),
+      lines: pool.length,
+      teams,
+      am: teams.filter((team) => team.phase !== "PM"),
+      pm: teams.filter((team) => team.phase === "PM"),
+      open: pool.filter((person) => !assigned.has(person.id)),
     };
   });
 
-  const hours = $derived(
-    snapshot.open && snapshot.close ? `${snapshot.open}–${snapshot.close}` : "—",
-  );
+  function form() {
+    const next = autoFormTeams(live, { stsoPer, ltsoPer, tsoPer, startWindowMin, allowOneRdo });
+    writeTeams(live, next);
+    note = next.length ? next.length + " teams formed from RDO and start." : "No STSO lines to anchor teams.";
+    notifySessionLines();
+  }
+
+  function clearTeams() {
+    writeTeams(live, []);
+    note = "Teams cleared.";
+    notifySessionLines();
+  }
 </script>
 
 <section class="teams" aria-label="Teams">
   <header class="head">
     <h2>Teams</h2>
     <p>
-      {#if snapshot.lines}
-        {snapshot.lines} lines in this session.
+      {#if view.lines}
+        {view.lines} ops lines · {view.teams.length} teams · {view.open.length} unassigned
       {:else}
         No lines yet. Generate or import on Build.
       {/if}
     </p>
   </header>
 
-  <div class="figures" aria-label="Session snapshot">
-    <div>
-      <span>Period</span>
-      <b>{snapshot.start || "Not set"}</b>
-    </div>
-    <div>
-      <span>Weeks</span>
-      <b>{snapshot.weeks}</b>
-    </div>
-    <div>
-      <span>Hours</span>
-      <b>{hours}</b>
-    </div>
-    <div>
-      <span>Lines</span>
-      <b>{snapshot.lines}</b>
-    </div>
-    <div>
-      <span>Teams</span>
-      <b>{snapshot.teamCount}</b>
-    </div>
-    <div>
-      <span>Assigned</span>
-      <b>{snapshot.assigned}</b>
-    </div>
-    <div>
-      <span>FTE</span>
-      <b>{snapshot.fte}</b>
-    </div>
-  </div>
+  <form class="form" onsubmit={(event) => { event.preventDefault(); form(); }}>
+    <label>STSO <input type="number" min="0" max="20" bind:value={stsoPer} /></label>
+    <label>LTSO <input type="number" min="0" max="20" bind:value={ltsoPer} /></label>
+    <label>TSO <input type="number" min="0" max="50" bind:value={tsoPer} /></label>
+    <label>Start window <input type="number" min="0" max="180" step="15" bind:value={startWindowMin} /></label>
+    <label class="check"><input type="checkbox" bind:checked={allowOneRdo} /> Allow 1 matching RDO</label>
+    <button type="submit">Auto-form</button>
+    <button type="button" onclick={clearTeams}>Clear</button>
+  </form>
+  {#if note}<p class="hint">{note}</p>{/if}
 
-  {#if snapshot.rows.length}
-    <h3>On session</h3>
-    <div class="figures" aria-label="Team totals">
-      {#each snapshot.rows as team (team.key)}
-        <div>
-          <span>{team.name}</span>
-          <b>{team.members}</b>
-        </div>
+  {#each [{ title: "AM", rows: view.am }, { title: "PM", rows: view.pm }] as band (band.title)}
+    <h3>{band.title}</h3>
+    {#if band.rows.length}
+      <div class="lists">
+        {#each band.rows as team (team.key)}
+          <article>
+            <header>
+              <b>{team.name}</b>
+              <span>{team.members.length}</span>
+            </header>
+            <ul>
+              {#each team.members as person (person.id)}
+                <li>{person.lineCode} · {person.role} · {person.sex} · {person.start || "—"} · {person.rdoLabel}</li>
+              {/each}
+            </ul>
+          </article>
+        {/each}
+      </div>
+    {:else}
+      <p class="hint">No {band.title} teams.</p>
+    {/if}
+  {/each}
+
+  <h3>Unassigned</h3>
+  {#if view.open.length}
+    <ul class="open">
+      {#each view.open as person (person.id)}
+        <li>{person.lineCode} · {person.role} · {person.sex} · {person.start || "—"} · {person.rdoLabel}</li>
       {/each}
-    </div>
+    </ul>
   {:else}
-    <p class="hint">No teams on this session.</p>
+    <p class="hint">{view.lines ? "Everyone is on a team." : "No lines yet."}</p>
   {/if}
-
-  <p class="hint">Read-only. No roster edits.</p>
 </section>
 
 <style>
@@ -129,18 +122,25 @@
     flex-direction: column;
     gap: 12px;
     min-width: 0;
-    max-width: 100%;
+  }
+
+  .head,
+  .form,
+  .lists {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
   }
 
   .head {
-    display: flex;
     flex-direction: column;
     gap: 4px;
   }
 
   h2,
   h3,
-  p {
+  p,
+  ul {
     margin: 0;
   }
 
@@ -158,29 +158,64 @@
   }
 
   p,
-  .hint {
+  .hint,
+  li {
     color: var(--muted);
     font-size: 13px;
   }
 
-  .figures {
+  .form label,
+  .check {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  input,
+  button {
+    min-height: 44px;
+    padding: 6px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font: inherit;
+  }
+
+  button[type="submit"] {
+    background: var(--fill);
+    border-color: var(--fill);
+    color: var(--fill-ink);
+  }
+
+  .lists {
+    align-items: flex-start;
+  }
+
+  article {
+    min-width: 14rem;
+    flex: 1 1 16rem;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    padding: 8px;
+  }
+
+  article header {
+    display: flex;
+    justify-content: space-between;
     gap: 8px;
   }
 
-  .figures div {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 5.5rem;
-    padding: 8px;
-    border: 1px solid var(--line);
-    background: var(--bg);
+  article ul,
+  .open {
+    padding: 0;
+    list-style: none;
   }
 
-  .figures span {
-    color: var(--muted);
-    font-size: 12px;
+  li {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--line);
   }
 </style>
