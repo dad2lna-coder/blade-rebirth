@@ -56,6 +56,30 @@
     note = "Teams cleared.";
     notifySessionLines();
   }
+
+  function savedTeams() {
+    return ((live.teams && live.teams.teams) || []).map((team) => ({
+      ...team,
+      members: Array.isArray(team.members) ? team.members.slice() : [],
+    }));
+  }
+
+  function removeMember(teamId: string, lineId: unknown) {
+    const next = savedTeams()
+      .map((team) => team.id === teamId
+        ? { ...team, members: team.members.filter((id) => String(id) !== String(lineId)) }
+        : team)
+      .filter((team) => team.members.length);
+    writeTeams(live, next);
+    note = "Removed from team. Line stays in the session.";
+    notifySessionLines();
+  }
+
+  function disband(teamId: string) {
+    writeTeams(live, savedTeams().filter((team) => team.id !== teamId));
+    note = "Team disbanded. Lines stay in the session.";
+    notifySessionLines();
+  }
 </script>
 
 <section class="teams" aria-label="Teams">
@@ -90,10 +114,14 @@
             <header>
               <b>{team.name}</b>
               <span>{team.members.length}</span>
+              <button type="button" onclick={() => disband(team.key)}>Disband</button>
             </header>
             <ul>
               {#each team.members as person (person.id)}
-                <li>{person.lineCode} · {person.role} · {person.sex} · {person.start || "—"} · {person.rdoLabel}</li>
+                <li>
+                  <span>{person.lineCode} · {person.role} · {person.sex} · {person.start || "—"} · {person.rdoLabel}</span>
+                  <button type="button" onclick={() => removeMember(team.key, person.id)}>Remove</button>
+                </li>
               {/each}
             </ul>
           </article>
@@ -202,10 +230,19 @@
     padding: 8px;
   }
 
-  article header {
+  article header,
+  li {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: 8px;
+  }
+
+  article header button,
+  li button {
+    min-height: 32px;
+    padding: 4px 8px;
+    background: transparent;
   }
 
   article ul,
