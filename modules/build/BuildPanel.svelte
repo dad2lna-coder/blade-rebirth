@@ -3,6 +3,7 @@
   import GenerateModal from "./GenerateModal.svelte";
   import { session } from "./session";
   import { onSessionLines } from "./sessionBus.js";
+  import { applySession, clearSession, exportSession } from "./sessionIo.js";
   import { setupStore } from "./stores/setupStore.js";
   import { parseStartDate, toDateInputValue } from "./period/dates.js";
   import { ensurePositionGender, plannedHeadcount } from "./fte/gender.js";
@@ -25,8 +26,10 @@
 
   let open = $state(false);
   let trigger: HTMLButtonElement | undefined = $state();
+  let fileEl: HTMLInputElement | undefined = $state();
   let tick = $state(0);
   let bandNote = $state("");
+  let ioNote = $state("");
 
   let start = $state(toDateInputValue(live.state.startDate));
   let weeks = $state(int(live.state.weekCount, 1));
@@ -342,6 +345,81 @@
     };
   });
 
+  function hydrate() {
+    start = toDateInputValue(live.state.startDate);
+    weeks = int(live.state.weekCount, 1);
+    seed = live.state.generateSeed != null ? String(live.state.generateSeed) : "random";
+    openTime = String(live.state.open || "03:30");
+    closeTime = String(live.state.close || "23:00");
+    ftM = int(live.state.ftM);
+    ftF = int(live.state.ftF);
+    ptM = int(live.state.ptM);
+    ptF = int(live.state.ptF);
+    ptHours = int(live.state.ptHoursPerDay, 4);
+    ptDays = int(live.state.ptDaysPerWeek, 3);
+    ltsoM = int(live.state.ltsoM);
+    ltsoF = int(live.state.ltsoF);
+    stsoM = int(live.state.stsoM);
+    stsoF = int(live.state.stsoF);
+    esti = int(live.state.esti);
+    msti = int(live.state.msti);
+    const nextGender = ensurePositionGender(live.state);
+    gender = {
+      FT: { ...nextGender.FT },
+      PT: { ...nextGender.PT },
+      LTSO: { ...nextGender.LTSO },
+      STSO: { ...nextGender.STSO },
+    };
+    shifts = live.state.shifts as any[];
+    extras = (live.state.extraPositions || []) as any[];
+    fc = live.state.functionCoverage;
+    cert = live.state.certPool;
+    live.state.shifts = shifts;
+    live.state.extraPositions = extras;
+    live.state.functionCoverage = fc;
+    live.state.certPool = cert;
+    tick += 1;
+  }
+
+  function downloadSession() {
+    commit();
+    const filename = exportSession(live);
+    ioNote = "Exported " + filename + ".";
+  }
+
+  function pickImport() {
+    if (!fileEl) return;
+    fileEl.value = "";
+    fileEl.click();
+  }
+
+  function onImportFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files && input.files[0];
+    input.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        applySession(live, JSON.parse(String(reader.result || "")));
+        hydrate();
+        ioNote = "Imported " + (live.state.lines.length ? "config and results" : "config only") + " · " + live.state.lines.length + " line(s).";
+      } catch (err) {
+        live.state.issues = ["Import failed: " + (err instanceof Error ? err.message : "Invalid JSON")];
+        ioNote = "Import failed.";
+        tick += 1;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function clearSessionForm() {
+    if (!confirm("Clear the session to empty defaults? Period, FTE, shifts, coverage, certs, and lines will reset.")) return;
+    clearSession(live);
+    hydrate();
+    ioNote = "Cleared session.";
+  }
+
   onMount(() => onSessionLines(() => {
     tick += 1;
   }));
@@ -406,7 +484,19 @@
       aria-expanded={open}
       onclick={openModal}>[GEN] GENERATE</button
     >
+    <button type="button" class="btn" id="btn-export" onclick={downloadSession}>[EXP] EXPORT</button>
+    <button type="button" class="btn" id="btn-import" onclick={pickImport}>[IMP] IMPORT</button>
+    <button type="button" class="btn danger" id="btn-clear" onclick={clearSessionForm}>[CLR] CLEAR</button>
+    <input
+      bind:this={fileEl}
+      type="file"
+      id="file-import"
+      accept="application/json,.json"
+      hidden
+      onchange={onImportFile}
+    />
   </div>
+  {#if ioNote}<p class="hint" role="status">{ioNote}</p>{/if}
 
   <p class="lede">
     <strong>BLADE</strong> staffing balancer. <strong>FT / PT</strong> are operational TSO.
@@ -970,6 +1060,10 @@
     background: transparent;
     border: 1px solid var(--line);
     color: var(--ink);
+  }
+
+  .danger {
+    color: var(--mark);
   }
 
   summary {
