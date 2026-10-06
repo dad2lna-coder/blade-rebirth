@@ -13,6 +13,17 @@ export type ShiftDef = {
 export type ExtraPosition = {
   id: string;
   name?: string;
+  m?: number;
+  f?: number;
+  ignoreGender?: boolean;
+  dropM?: number;
+  dropF?: number;
+};
+
+export type PositionGender = {
+  ignoreGender?: boolean;
+  dropM?: number;
+  dropF?: number;
 };
 
 export type ScheduleLine = {
@@ -24,6 +35,8 @@ export type ScheduleLine = {
   lineCode?: string;
   shiftName?: string;
   rdoDays?: number[];
+  empClass?: string;
+  countSex?: boolean;
 };
 
 export type CrewGroup = {
@@ -40,7 +53,7 @@ export type SetupState = {
   schedule: Record<string, string[] | undefined>;
   functionRotation: Record<string, string[] | undefined>;
   shiftCrewGroups: CrewGroup[];
-  ignoreGender?: boolean;
+  positionGender?: Record<string, PositionGender>;
   esti?: number;
   msti?: number;
 };

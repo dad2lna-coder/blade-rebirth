@@ -47,6 +47,9 @@ export function normalizeExtraPosition(pos, i, shifts) {
   if (!pos.name) pos.name = "Position";
   pos.m = num0(pos.m);
   pos.f = num0(pos.f);
+  pos.ignoreGender = !!pos.ignoreGender;
+  pos.dropM = num0(pos.dropM);
+  pos.dropF = num0(pos.dropF);
   pos.opsFte = opsFteYes(pos);
   if (!Array.isArray(pos.bands) || !pos.bands.length) pos.bands = defaultExtraBands();
   pos.shiftCounts = normalizeShiftCounts(pos.shiftCounts, shifts);
@@ -308,7 +311,7 @@ export function buildExtraPositionLines(S) {
         if (!sex) return;
         placedGlobal[sex]++;
         slot.filled = true;
-        slot.sex = (S.state && S.state.ignoreGender) ? "" : sex;
+        slot.sex = sex;
 
         var empClass = extraEmpClass(slot.def, S);
         var workDays = S.targetWorkDays ? S.targetWorkDays(slot.def.id, empClass) : ((+slot.def.paid || 8) >= 10 ? 4 : 5);

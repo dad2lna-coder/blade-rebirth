@@ -1,5 +1,6 @@
 // @ts-nocheck
 /** Setup owns default hours, FTE, shifts, function-coverage seed. */
+import { ensurePositionGender } from "../fte/gender.js";
 
 export function defaultShifts() {
   return [
@@ -44,7 +45,12 @@ export function defaultSetupState() {
     ltsoM: 1, ltsoF: 1,
     stsoM: 2, stsoF: 2,
     esti: 0, msti: 0,
-    ignoreGender: false,
+    positionGender: {
+      FT: { ignoreGender: false, dropM: 0, dropF: 0 },
+      PT: { ignoreGender: false, dropM: 0, dropF: 0 },
+      LTSO: { ignoreGender: false, dropM: 0, dropF: 0 },
+      STSO: { ignoreGender: false, dropM: 0, dropF: 0 },
+    },
     certDfoMax: 0, certPaxMax: 0, certBagMax: 0,
     certDfoEnabled: true, certBagEnabled: true,
     certPool: { pools: ["A", "B"], targetBPercent: 45, functionMap: { DFO: "B", BAG: "", PAX: "" } },
@@ -84,6 +90,7 @@ export function attachSetupState(S) {
   }
   if (!Array.isArray(S.state.shiftCrewGroups)) S.state.shiftCrewGroups = [];
   if (!Array.isArray(S.state.scheduleLocks)) S.state.scheduleLocks = [];
+  ensurePositionGender(S.state);
   S.defaultShifts = defaultShifts;
   if (!S.shiftSeq) S.shiftSeq = (S.state.shifts && S.state.shifts.length) || 6;
 }

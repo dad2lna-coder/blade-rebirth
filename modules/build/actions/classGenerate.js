@@ -4,6 +4,7 @@
  */
 import { buildScheduleForLine } from "./generate.js";
 import { assignCertPoolsToLines } from "../certs/certAssign.js";
+import { applyPositionGender, classIgnoresGender, policyFor } from "../fte/gender.js";
 
 export function belongsToClass(line, classKey) {
   if (!line) return false;
@@ -106,26 +107,30 @@ export function generateClass(S, classKey, perShiftTargets) {
   // Calculate locked counts by sex, shift, and PT/FT
   var lockedM = 0, lockedF = 0;
   var lockedFtM = 0, lockedFtF = 0, lockedPtM = 0, lockedPtF = 0;
+  var lockedPtU = 0, lockedFtU = 0;
   var lockedShiftM = {};
   var lockedShiftF = {};
+  var lockedShiftAny = {};
 
   shifts.forEach(function (s) {
     lockedShiftM[s.id] = 0;
     lockedShiftF[s.id] = 0;
+    lockedShiftAny[s.id] = 0;
   });
 
   lockedClassLines.forEach(function (l) {
-    var isF = l.sex === "F";
     var isPt = l.empClass === "PT";
-    if (isF) {
+    if (l.shiftId && lockedShiftAny[l.shiftId] != null) lockedShiftAny[l.shiftId]++;
+    if (l.sex === "F") {
       lockedF++;
       if (isPt) lockedPtF++; else lockedFtF++;
       if (l.shiftId && lockedShiftF[l.shiftId] != null) lockedShiftF[l.shiftId]++;
-    } else {
+    } else if (l.sex === "M") {
       lockedM++;
       if (isPt) lockedPtM++; else lockedFtM++;
       if (l.shiftId && lockedShiftM[l.shiftId] != null) lockedShiftM[l.shiftId]++;
-    }
+    } else if (isPt) lockedPtU++;
+    else lockedFtU++;
   });
 
   var startId = 1;
@@ -138,13 +143,22 @@ export function generateClass(S, classKey, perShiftTargets) {
 
   if (perShiftTargets && typeof perShiftTargets === "object") {
     var isTrainCls = classKey === "MSTI" || classKey === "ESTI";
-    var ignoreSex = !!(S.state && S.state.ignoreGender);
+    var ignoreSex = classIgnoresGender(S.state, classKey);
+    var ftIgnore = !!policyFor(S.state, "FT").ignoreGender;
+    var ptIgnore = !!policyFor(S.state, "PT").ignoreGender;
+    var mixedTso = classKey === "TSO" && ftIgnore !== ptIgnore;
+    var sexHcM = mixedTso
+      ? ((ftIgnore ? 0 : (+S.state.ftM || 0)) + (ptIgnore ? 0 : (+S.state.ptM || 0)))
+      : (hc.M || 0);
+    var sexHcF = mixedTso
+      ? ((ftIgnore ? 0 : (+S.state.ftF || 0)) + (ptIgnore ? 0 : (+S.state.ptF || 0)))
+      : (hc.F || 0);
     var unsexed = isTrainCls || ignoreSex;
     var headTotal = isTrainCls ? hc.total : ((hc.M || 0) + (hc.F || 0));
-    var lockedTotal = isTrainCls ? lockedClassLines.length : (lockedM + lockedF);
+    var lockedTotal = (isTrainCls || unsexed) ? lockedClassLines.length : (lockedM + lockedF);
 
-    var maxNewM = unsexed ? Math.max(0, headTotal - lockedTotal) : Math.max(0, hc.M - lockedM);
-    var maxNewF = unsexed ? 0 : Math.max(0, hc.F - lockedF);
+    var maxNewM = unsexed ? Math.max(0, headTotal - lockedTotal) : Math.max(0, sexHcM - lockedM);
+    var maxNewF = unsexed ? 0 : Math.max(0, sexHcF - lockedF);
 
     var remMaxNewM = maxNewM;
     var remMaxNewF = maxNewF;
@@ -155,6 +169,7 @@ export function generateClass(S, classKey, perShiftTargets) {
     var remPtM = classKey === "TSO" ? Math.max(0, (+S.state.ptM || 0) - lockedPtM) : 0;
     var remPtF = classKey === "TSO" ? Math.max(0, (+S.state.ptF || 0) - lockedPtF) : 0;
     var remPtPool = classKey === "TSO" ? Math.max(0, (+S.state.ptM || 0) + (+S.state.ptF || 0) - lockedPtM - lockedPtF) : 0;
+    if (mixedTso && ptIgnore) { remPtM = 0; remPtF = 0; }
 
     shifts.forEach(function (sh) {
       var t = perShiftTargets[sh.id] || { M: 0, F: 0 };
@@ -166,7 +181,7 @@ export function generateClass(S, classKey, perShiftTargets) {
       }
 
       var lM = (ignoreSex && !isTrainCls)
-        ? ((lockedShiftM[sh.id] || 0) + (lockedShiftF[sh.id] || 0))
+        ? (lockedShiftAny[sh.id] || 0)
         : (lockedShiftM[sh.id] || 0);
       var lF = (ignoreSex && !isTrainCls) ? 0 : (lockedShiftF[sh.id] || 0);
 
@@ -221,8 +236,8 @@ export function generateClass(S, classKey, perShiftTargets) {
         newClassLines.push(createLineForClass(S, classKey, sfIdA, fallbackShift, "", true, isPtSfA));
       }
     } else {
-      var shortfallM = Math.max(0, hc.M - totalTargetedM);
-      var shortfallF = Math.max(0, hc.F - totalTargetedF);
+      var shortfallM = Math.max(0, sexHcM - totalTargetedM);
+      var shortfallF = Math.max(0, sexHcF - totalTargetedF);
 
       for (var sm = 0; sm < shortfallM; sm++) {
         var sfIdM = getNextId(usedIds, startId);
@@ -237,6 +252,23 @@ export function generateClass(S, classKey, perShiftTargets) {
         if (isPtSfF) remPtF--;
         var lineSfF = createLineForClass(S, classKey, sfIdF, fallbackShift, "F", true, isPtSfF);
         newClassLines.push(lineSfF);
+      }
+    }
+    if (mixedTso) {
+      var openShifts = shifts.length ? shifts : [fallbackShift];
+      function placeOpen(count, isPtLine) {
+        for (var n = 0; n < count; n++) {
+          var openId = getNextId(usedIds, startId);
+          newClassLines.push(createLineForClass(S, classKey, openId, openShifts[n % openShifts.length], "", false, isPtLine));
+        }
+      }
+      if (ptIgnore) {
+        var lockedPtN = lockedPtM + lockedPtF + lockedPtU;
+        placeOpen(Math.max(0, (+S.state.ptM || 0) + (+S.state.ptF || 0) - lockedPtN), true);
+      }
+      if (ftIgnore) {
+        var lockedFtN = lockedFtM + lockedFtF + lockedFtU;
+        placeOpen(Math.max(0, (+S.state.ftM || 0) + (+S.state.ftF || 0) - lockedFtN), false);
       }
     }
   } else {
@@ -317,8 +349,9 @@ export function generateClass(S, classKey, perShiftTargets) {
     });
   }
 
-  // Combine updated lines
+  // Combine updated lines. Gender flags are per position, including lines kept locked.
   S.state.lines = untouchedLines.concat(lockedClassLines, newClassLines);
+  applyPositionGender(S.state, lockedClassLines.concat(newClassLines));
 
   // Rebuild schedule for new class lines only
   newClassLines.forEach(function (line) {
@@ -412,7 +445,6 @@ function createLineForClass(S, classKey, id, shift, sex, isShortfall, isPt) {
   var isLtso = classKey === "LTSO";
   var isTrain = classKey === "MSTI" || classKey === "ESTI";
   var isExtra = classKey.indexOf("EXTRA_") === 0;
-  var ignoreSex = !!(S && S.state && S.state.ignoreGender);
 
   var empClass = isStso ? "STSO" : (isLtso ? "LTSO" : (isTrain ? classKey : (isPt ? "PT" : "FT")));
   var position = isStso ? "STSO" : (isLtso ? "LTSO" : (isTrain ? classKey : "TSO"));
@@ -463,7 +495,7 @@ function createLineForClass(S, classKey, id, shift, sex, isShortfall, isPt) {
     extraPositionId: isExtra ? classKey.substring(6) : null,
     extraName: isExtra ? classKey.substring(6) : null,
     opsFte: opsFte,
-    sex: (isTrain || ignoreSex) ? "" : sex,
+    sex: isTrain ? "" : sex,
     function: isShortfall ? "-" : (isTrain ? "TRAINING" : "PAX"),
     isShortfall: !!isShortfall,
     rdoDays: rdoDays,

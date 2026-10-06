@@ -23,8 +23,8 @@ export function isOpsCertLine(line) {
 export function certSliceKey(line) {
   var pos = lineCertPosition(line);
   if (!pos) return "";
-  var sex = line && line.sex === "F" ? "F" : "M";
-  return pos + ":" + sex;
+  var sex = line && (line.sex === "M" || line.sex === "F") ? line.sex : "";
+  return sex ? pos + ":" + sex : pos;
 }
 
 function mappedPoolForFunction(fn, cfg) {

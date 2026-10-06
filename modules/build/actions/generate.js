@@ -2,6 +2,7 @@
 /** Setup owns generate: snapshot inputs, then run allocation + line schedule. */
 import { parseStartDate, addDays, weekdaySun0 } from "../period/dates.js";
 import { notifySessionLines } from "../sessionBus.js";
+import { applyPositionGender, genderStatusNote } from "../fte/gender.js";
 
 export function buildScheduleForLine(S, line, days) {
   var arr = [];
@@ -162,6 +163,7 @@ export function generate(S) {
     lockedStso, stsoLines,
     lockedOther, extraLines, trainingLines
   );
+  applyPositionGender(S.state, S.state.lines);
 
   var days = S.state.weekCount * 7;
   S.state.schedule = {};
@@ -273,7 +275,7 @@ export function generate(S) {
       " \u00b7 ESTI " + (S.state.esti || 0) +
       " \u00b7 MSTI " + (S.state.msti || 0) +
       (extraHead ? " \u00b7 other FTE " + extraHead : "") +
-      (S.state.ignoreGender ? " \u00b7 gender ignored" : "") +
+      genderStatusNote(S.state) +
       ") \u00b7 " + mode + " \u00b7 " + S.state.weekCount + " wk" +
       (fcMode && fcMode !== "none" ? " \u00b7 " + String(fcMode).toUpperCase() + " duties" : "") +
       (S.state.issues.length ? " \u00b7 " + S.state.issues.length + " note(s)" : "")

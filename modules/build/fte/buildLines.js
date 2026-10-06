@@ -1,5 +1,6 @@
 // @ts-nocheck
 /** Turn allocated headcounts into bid lines. */
+import { policyFor } from "./gender.js";
 
 export function createPRNG(seed) {
   var s = (seed >>> 0) || 1;
@@ -35,18 +36,30 @@ export function getBandKey(S, shiftId) {
 
 function takeFromPools(S, pools, preferLongFt, placed, preferPt) {
   placed = placed || { M: 0, F: 0 };
+  function ignores(emp) {
+    return !!(S && S.state && policyFor(S.state, emp).ignoreGender);
+  }
   function take(emp, sex) {
     var key = emp + sex;
     if (pools[key] > 0) { pools[key]--; return { empClass: emp, sex: sex }; }
     return null;
   }
-  var startM = (S.state.ftM || 0) + (S.state.ptM || 0);
-  var startF = (S.state.ftF || 0) + (S.state.ptF || 0);
-  var startT = startM + startF;
-  var targetFShare = startT > 0 ? startF / startT : 0.5;
+  var genderedM = 0;
+  var genderedF = 0;
+  if (!ignores("FT")) { genderedM += S.state.ftM || 0; genderedF += S.state.ftF || 0; }
+  if (!ignores("PT")) { genderedM += S.state.ptM || 0; genderedF += S.state.ptF || 0; }
+  var startT = genderedM + genderedF;
+  var targetFShare = startT > 0 ? genderedF / startT : 0.5;
   function pickSex(emp) {
     var mLeft = pools[emp + "M"] || 0, fLeft = pools[emp + "F"] || 0;
     if (mLeft <= 0 && fLeft <= 0) return null;
+    if (ignores(emp)) {
+      var openSex = mLeft >= fLeft ? "M" : "F";
+      if (mLeft <= 0) openSex = "F";
+      if (fLeft <= 0) openSex = "M";
+      pools[emp + openSex]--;
+      return { empClass: emp, sex: openSex };
+    }
     if (mLeft <= 0) return take(emp, "F");
     if (fLeft <= 0) return take(emp, "M");
     var placedT = placed.M + placed.F;
@@ -221,7 +234,7 @@ export function buildLines(S, counts) {
         }
         remainingNonLongSeats = Math.max(0, remainingNonLongSeats - 1);
       }
-      placedGlobal[person.sex]++;
+      if (!policyFor(S.state, person.empClass).ignoreGender) placedGlobal[person.sex]++;
       slot.person = person;
 
       // Compute correct workDays and rdoDays based on assigned empClass (FT vs PT)
@@ -255,7 +268,7 @@ export function buildLines(S, counts) {
       shiftName: slot.def.name,
       shiftLabel: S.shiftLabel(slot.def),
       empClass: slot.person.empClass,
-      sex: (S.state && S.state.ignoreGender) ? "" : slot.person.sex,
+      sex: slot.person.sex,
       function: "",
       rdoDays: slot.rdoDays,
       rdoHard: slot.rdoHard,
@@ -398,7 +411,7 @@ export function buildSupervisoryLines(S, supCounts, supType) {
       }
       placedGlobal[sex]++;
       slot.filled = true;
-      slot.sex = (S.state && S.state.ignoreGender) ? "" : sex;
+      slot.sex = sex;
     });
   });
 

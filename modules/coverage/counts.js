@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** Coverage counts from the live session. Alpha opsFte + dash-duty rules. Not a line store. */
 import { parseStartDate, addDays, weekdaySun0 } from "../build/period/dates.js";
+import { countedSex, linePositionKey } from "../build/fte/gender.js";
 
 var DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -112,7 +113,6 @@ export function computeHourlyByDow(S, view) {
 
   (S.state.lines || []).forEach(function (line) {
     if (!S.getShift(line.shiftId)) return;
-    var isM = line.sex === "M";
     for (var day = 0; day < 7; day++) {
       var dayOff = dowToOffset[day];
       if (dayOff == null) continue;
@@ -120,8 +120,9 @@ export function computeHourlyByDow(S, view) {
       if (!lineMatchesCoverageFilter(S, line, dayOff, view)) continue;
       slots.forEach(function (slot, si) {
         if (!coversSlot(S, line, dayOff, day, slot)) return;
-        if (isM) matrix[si][day].m++;
-        else matrix[si][day].f++;
+        var sex = countedSex(line);
+        if (sex === "M") matrix[si][day].m++;
+        else if (sex === "F") matrix[si][day].f++;
         matrix[si][day].t++;
       });
     }
@@ -131,16 +132,19 @@ export function computeHourlyByDow(S, view) {
     var dayOff = dowToOffset[day];
     var m = 0;
     var f = 0;
+    var t = 0;
     if (dayOff != null) {
       (S.state.lines || []).forEach(function (line) {
         if (!S.getShift(line.shiftId)) return;
         if ((S.state.schedule[line.id] || S.state.schedule[String(line.id)] || [])[dayOff] !== "WORK") return;
         if (!lineMatchesCoverageFilter(S, line, dayOff, view)) return;
-        if (line.sex === "M") m++;
-        else f++;
+        t++;
+        var sex = countedSex(line);
+        if (sex === "M") m++;
+        else if (sex === "F") f++;
       });
     }
-    return { m: m, f: f, t: m + f };
+    return { m: m, f: f, t: t };
   });
 
   var allVals = [];
@@ -173,25 +177,63 @@ export function dutySnapshot(S) {
   return out;
 }
 
-export function shiftMix(S) {
-  var counts = {};
+export function positionHeadcount(S) {
+  var rows = [];
+  var index = {};
+  function bucket(key, label) {
+    if (!index[key]) {
+      index[key] = { key: key, label: label, m: 0, f: 0, t: 0 };
+      rows.push(index[key]);
+    }
+    return index[key];
+  }
   (S.state.lines || []).forEach(function (line) {
-    var key = line.shiftId + "|" + line.empClass + "|" + (line.sex || "?");
-    counts[key] = (counts[key] || 0) + 1;
+    var key = linePositionKey(line);
+    if (!key) return;
+    var label = key;
+    if (key === "FT") label = "FT TSO";
+    else if (key === "PT") label = "PT TSO";
+    else if (key.indexOf("EXTRA:") === 0) label = String(line.extraName || line.position || "Position");
+    var row = bucket(key, label);
+    row.t++;
+    var sex = countedSex(line);
+    if (sex === "M") row.m++;
+    else if (sex === "F") row.f++;
   });
+  var order = { FT: 0, PT: 1, LTSO: 2, STSO: 3 };
+  rows.sort(function (a, b) {
+    var ao = order[a.key] != null ? order[a.key] : 10;
+    var bo = order[b.key] != null ? order[b.key] : 10;
+    if (ao !== bo) return ao - bo;
+    return String(a.label).localeCompare(String(b.label));
+  });
+  return rows;
+}
+
+export function shiftMix(S) {
+  function blank() { return { m: 0, f: 0, t: 0 }; }
+  function add(cell, line) {
+    cell.t++;
+    var sex = countedSex(line);
+    if (sex === "M") cell.m++;
+    else if (sex === "F") cell.f++;
+  }
   var rows = [];
   (S.state.shifts || []).forEach(function (shift) {
-    function n(emp, sex) { return counts[shift.id + "|" + emp + "|" + sex] || 0; }
-    var ftm = n("FT", "M");
-    var ftf = n("FT", "F");
-    var ptm = n("PT", "M");
-    var ptf = n("PT", "F");
-    var ltm = n("LTSO", "M");
-    var ltf = n("LTSO", "F");
-    var stm = n("STSO", "M");
-    var stf = n("STSO", "F");
-    var tso = ftm + ftf + ptm + ptf;
-    var all = tso + ltm + ltf + stm + stf;
+    var ft = blank();
+    var pt = blank();
+    var lt = blank();
+    var st = blank();
+    (S.state.lines || []).forEach(function (line) {
+      if (line.shiftId !== shift.id) return;
+      if (line.isTraining || line.trainingClass || line.empClass === "ESTI" || line.empClass === "MSTI") return;
+      if (line.isExtra || line.extraPositionId) return;
+      if (line.isStso || line.empClass === "STSO") add(st, line);
+      else if (line.isLtso || line.empClass === "LTSO") add(lt, line);
+      else if (line.empClass === "PT") add(pt, line);
+      else if (line.empClass === "FT" || line.empClass === "TSO" || !line.empClass) add(ft, line);
+    });
+    var all = ft.t + pt.t + lt.t + st.t;
     if (!all) return;
     var windowText = (shift.segments && shift.segments.length === 2)
       ? (shift.segments[0].start + "\u2013" + shift.segments[0].end + " / " + shift.segments[1].start + "\u2013" + shift.segments[1].end)
@@ -200,15 +242,19 @@ export function shiftMix(S) {
       id: shift.id,
       name: shift.name || shift.id,
       window: windowText,
-      ftM: ftm,
-      ftF: ftf,
-      ptM: ptm,
-      ptF: ptf,
-      ltsoM: ltm,
-      ltsoF: ltf,
-      stsoM: stm,
-      stsoF: stf,
-      tso: tso,
+      ftM: ft.m,
+      ftF: ft.f,
+      ftT: ft.t,
+      ptM: pt.m,
+      ptF: pt.f,
+      ptT: pt.t,
+      ltsoM: lt.m,
+      ltsoF: lt.f,
+      ltsoT: lt.t,
+      stsoM: st.m,
+      stsoF: st.f,
+      stsoT: st.t,
+      tso: ft.t + pt.t,
       all: all,
     });
   });

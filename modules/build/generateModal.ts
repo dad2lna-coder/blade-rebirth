@@ -56,8 +56,19 @@ export function isTrainingClass(classKey: string): boolean {
   return classKey === "MSTI" || classKey === "ESTI";
 }
 
-function genderIgnored(session: SetupSession): boolean {
-  return !!session.state.ignoreGender;
+function genderIgnored(session: SetupSession, classKey: string): boolean {
+  const state = session.state as SetupSession["state"] & {
+    positionGender?: Record<string, { ignoreGender?: boolean }>;
+  };
+  const gender = state.positionGender || {};
+  if (classKey === "STSO" || classKey === "LTSO") return !!gender[classKey]?.ignoreGender;
+  if (classKey === "TSO") return !!gender.FT?.ignoreGender && !!gender.PT?.ignoreGender;
+  if (classKey.indexOf("EXTRA_") === 0) {
+    const id = classKey.substring(6);
+    const pos = (state.extraPositions || []).find((item) => item.id === id || item.name === id);
+    return !!(pos && (pos as { ignoreGender?: boolean }).ignoreGender);
+  }
+  return false;
 }
 
 /** Band key from the shift, or its crew group. Not a scheduler. */
@@ -132,20 +143,21 @@ export function initPerShiftTargetsForClass(
   const lines = (session.state.lines || []).filter((line) =>
     session.belongsToClass ? session.belongsToClass(line, classKey) : false,
   );
+  const unsexedClass = isTrainingClass(classKey) || genderIgnored(session, classKey);
 
   if (lines.length) {
     for (const line of lines) {
       if (!line.shiftId || !targets[line.shiftId]) continue;
       if (line.isShortfall) continue;
-      if (line.sex === "F") targets[line.shiftId].F++;
-      else targets[line.shiftId].M++;
+      if (unsexedClass) targets[line.shiftId].M++;
+      else if (line.sex === "F") targets[line.shiftId].F++;
+      else if (line.sex === "M") targets[line.shiftId].M++;
     }
   } else if (shifts.length > 0) {
     const hc = session.getClassHeadcount
       ? session.getClassHeadcount(classKey)
       : { M: 0, F: 0, total: 0 };
-    const unsexed = isTrainingClass(classKey) || genderIgnored(session);
-    if (unsexed) {
+    if (unsexedClass) {
       let remTrain = hc.total || hc.M + hc.F;
       for (let index = 0; index < shifts.length; index++) {
         const take = Math.floor(remTrain / (shifts.length - index));
@@ -217,7 +229,7 @@ export function targetModel(session: SetupSession, ui: ModalUi): TargetModel {
   const shifts = session.state.shifts || [];
   const { sumM, sumF } = sumsFor(shifts, targets);
   const training = isTrainingClass(classKey);
-  const unsexed = training || genderIgnored(session);
+  const unsexed = training || genderIgnored(session, classKey);
   const cap = unsexed ? hc.total || hc.M + hc.F : 0;
   const info = unsexed
     ? "Total: " +
@@ -227,7 +239,7 @@ export function targetModel(session: SetupSession, ui: ModalUi): TargetModel {
       " targeted (" +
       Math.max(0, cap - (sumM + sumF)) +
       " shortfall)" +
-      (genderIgnored(session) && !training ? " · gender ignored" : "")
+      (genderIgnored(session, classKey) && !training ? " · gender ignored" : "")
     : "Male: " +
       sumM +
       " / " +
@@ -280,7 +292,7 @@ export function adjustTarget(session: SetupSession, ui: ModalUi, shiftId: string
     : { M: 0, F: 0, total: 0 };
   const { sumM, sumF } = sumsFor(session.state.shifts || [], targets);
   const training = isTrainingClass(classKey);
-  const unsexed = training || genderIgnored(session);
+  const unsexed = training || genderIgnored(session, classKey);
   const cap = unsexed ? hc.total || hc.M + hc.F : 0;
 
   if (kind === "m-up") {
@@ -372,8 +384,8 @@ export function weekdayBands(session: SetupSession): { empty: true } | { empty: 
       if (duty === "-") continue;
       const calDow = addDays(base, dayIdx).getDay();
       counts[key][calDow].total++;
-      if (line.sex === "F") counts[key][calDow].F++;
-      else if (line.sex === "M") counts[key][calDow].M++;
+      if (line.countSex !== false && line.sex === "F") counts[key][calDow].F++;
+      else if (line.countSex !== false && line.sex === "M") counts[key][calDow].M++;
     }
   }
 
@@ -381,9 +393,7 @@ export function weekdayBands(session: SetupSession): { empty: true } | { empty: 
     empty: false,
     rows: keys.map((key) => ({
       label: getBandLabel(session, key),
-      cells: counts[key].map((cell) =>
-        session.state.ignoreGender ? String(cell.total) : cell.M + "M / " + cell.F + "F (" + cell.total + ")",
-      ),
+      cells: counts[key].map((cell) => cell.M + "/" + cell.F + "/" + cell.total),
     })),
   };
 }

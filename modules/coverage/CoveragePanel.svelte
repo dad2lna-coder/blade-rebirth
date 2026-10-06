@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { session } from "../build/session";
   import { onSessionLines } from "../build/sessionBus.js";
-  import { computeHourlyByDow, dutySnapshot, shiftMix, slotLabel } from "./counts.js";
+  import { computeHourlyByDow, dutySnapshot, positionHeadcount, shiftMix, slotLabel } from "./counts.js";
 
   let tick = $state(0);
   let stso = $state(false);
@@ -31,6 +31,11 @@
   const mix = $derived.by(() => {
     void tick;
     return shiftMix(live);
+  });
+
+  const positions = $derived.by(() => {
+    void tick;
+    return positionHeadcount(live);
   });
 
   const hasLines = $derived.by(() => {
@@ -66,7 +71,18 @@
     <label class="check"><input type="radio" name="cov-func" value="pax" bind:group={funcView} /> PAX</label>
   </div>
 
-  <p class="hint">Counted lines only, plus a not-counted line on a day it is BAG, DFO, or PAX. Dash duty and training stay out. Cells are M/F/Total.</p>
+  <p class="hint">Ops lines, plus a non-ops line on a day it is BAG, DFO, or PAX. Dash duty and training stay out. Figures are counted M / counted F / total lines. Non-gendered and removed-from-count lines stay in the total only.</p>
+
+  {#if positions.length}
+    <div class="totals" aria-label="Position headcount">
+      {#each positions as row (row.key)}
+        <div>
+          <span>{row.label}</span>
+          <b>{row.m}/{row.f}/{row.t}</b>
+        </div>
+      {/each}
+    </div>
+  {/if}
 
   <div class="totals" aria-label="Weekday headcount">
     {#each hourly.days as label, index (label)}
@@ -118,10 +134,10 @@
         <tr>
           <th>Shift</th>
           <th>Window</th>
-          <th>FT M/F</th>
-          <th>PT M/F</th>
-          <th>LTSO M/F</th>
-          <th>STSO M/F</th>
+          <th>FT M/F/T</th>
+          <th>PT M/F/T</th>
+          <th>LTSO M/F/T</th>
+          <th>STSO M/F/T</th>
           <th>TSO tot</th>
           <th>All</th>
         </tr>
@@ -132,10 +148,10 @@
             <tr>
               <td>{row.name}</td>
               <td>{row.window}</td>
-              <td>{row.ftM}/{row.ftF}</td>
-              <td>{row.ptM}/{row.ptF}</td>
-              <td>{row.ltsoM}/{row.ltsoF}</td>
-              <td>{row.stsoM}/{row.stsoF}</td>
+              <td>{row.ftM}/{row.ftF}/{row.ftT}</td>
+              <td>{row.ptM}/{row.ptF}/{row.ptT}</td>
+              <td>{row.ltsoM}/{row.ltsoF}/{row.ltsoT}</td>
+              <td>{row.stsoM}/{row.stsoF}/{row.stsoT}</td>
               <td>{row.tso}</td>
               <td>{row.all}</td>
             </tr>

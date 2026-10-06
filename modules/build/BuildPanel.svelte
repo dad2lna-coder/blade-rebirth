@@ -5,6 +5,7 @@
   import { onSessionLines } from "./sessionBus.js";
   import { setupStore } from "./stores/setupStore.js";
   import { parseStartDate, toDateInputValue } from "./period/dates.js";
+  import { ensurePositionGender, plannedHeadcount } from "./fte/gender.js";
   import type { SetupSession } from "./types";
 
   const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -45,7 +46,13 @@
   let stsoF = $state(int(live.state.stsoF));
   let esti = $state(int(live.state.esti));
   let msti = $state(int(live.state.msti));
-  let ignoreGender = $state(!!live.state.ignoreGender);
+  const seeded = ensurePositionGender(live.state);
+  let gender = $state({
+    FT: { ...seeded.FT },
+    PT: { ...seeded.PT },
+    LTSO: { ...seeded.LTSO },
+    STSO: { ...seeded.STSO },
+  });
 
   let shifts = $state(live.state.shifts as any[]);
   let extras = $state((live.state.extraPositions || []) as any[]);
@@ -65,6 +72,19 @@
   function clamp(value: unknown, min: number, max: number, fallback: number) {
     const n = int(value, fallback);
     return Math.max(min, Math.min(max, n));
+  }
+
+  function policy(key: "FT" | "PT" | "LTSO" | "STSO", male: number, female: number) {
+    const row = gender[key];
+    return {
+      ignoreGender: !!row.ignoreGender,
+      dropM: Math.min(Math.max(0, male), Math.max(0, row.dropM || 0)),
+      dropF: Math.min(Math.max(0, female), Math.max(0, row.dropF || 0)),
+    };
+  }
+
+  function setGender(key: "FT" | "PT" | "LTSO" | "STSO", patch: { ignoreGender?: boolean; dropM?: number; dropF?: number }) {
+    gender[key] = { ...gender[key], ...patch };
   }
 
   function num(value: unknown, fallback = 0) {
@@ -90,7 +110,17 @@
     live.state.stsoF = Math.max(0, stsoF);
     live.state.esti = Math.max(0, esti);
     live.state.msti = Math.max(0, msti);
-    live.state.ignoreGender = ignoreGender;
+    live.state.positionGender = {
+      FT: policy("FT", ftM, ftF),
+      PT: policy("PT", ptM, ptF),
+      LTSO: policy("LTSO", ltsoM, ltsoF),
+      STSO: policy("STSO", stsoM, stsoF),
+    };
+    for (const pos of extras) {
+      pos.ignoreGender = !!pos.ignoreGender;
+      pos.dropM = Math.min(int(pos.m), Math.max(0, int(pos.dropM)));
+      pos.dropF = Math.min(int(pos.f), Math.max(0, int(pos.dropF)));
+    }
     const store = setupStore as Record<string, unknown>;
     store.fte = {
       ftM: live.state.ftM,
@@ -112,7 +142,6 @@
       weeks: live.state.weekCount,
       start,
       seed: live.state.generateSeed,
-      ignoreGender: live.state.ignoreGender,
     };
     store.extraPositions = extras;
     store.functionCoverage = fc;
@@ -190,6 +219,9 @@
       name: "Position",
       m: 0,
       f: 0,
+      ignoreGender: false,
+      dropM: 0,
+      dropF: 0,
       opsFte: false,
       bands: [{ start: "04:00", end: "20:30", min: 1 }],
       shiftCounts: {},
@@ -329,6 +361,37 @@
   </label>
 {/snippet}
 
+{#snippet genderControls(id: string, key: "FT" | "PT" | "LTSO" | "STSO", male: number, female: number)}
+  {@const row = policy(key, male, female)}
+  {@const plan = plannedHeadcount(male, female, row)}
+  <label class="check">
+    <input
+      type="checkbox"
+      id={"cfg-ignore-" + id}
+      checked={row.ignoreGender}
+      onchange={(event) => setGender(key, { ignoreGender: (event.currentTarget as HTMLInputElement).checked })}
+    />
+    Ignore gender
+  </label>
+  {@render count(
+    "cfg-drop-m-" + id,
+    "Remove from count M",
+    row.dropM,
+    (n) => setGender(key, { dropM: n }),
+    0,
+    Math.max(0, male),
+  )}
+  {@render count(
+    "cfg-drop-f-" + id,
+    "Remove from count F",
+    row.dropF,
+    (n) => setGender(key, { dropF: n }),
+    0,
+    Math.max(0, female),
+  )}
+  <p class="tally" aria-label={id + " counted headcount"}>{plan.M}/{plan.F}/{plan.T}</p>
+{/snippet}
+
 <section class="build" aria-label="Build">
   <div class="mount" id="mount-setup" data-mount="#mount-setup">
 <section class="setup" aria-label="Setup">
@@ -384,43 +447,54 @@
   <details class="card" open>
     <summary>FTE</summary>
     <div class="block">
-      <h3>FT TSO</h3>
-      <div class="sex">
-        {@render count("cfg-ft-m", "Male", ftM, (n) => (ftM = n))}
-        {@render count("cfg-ft-f", "Female", ftF, (n) => (ftF = n))}
+      <div class="fte-pos">
+        <div class="fte-head">
+          <h3>FT TSO</h3>
+          {@render genderControls("ft", "FT", ftM, ftF)}
+        </div>
+        <div class="sex">
+          {@render count("cfg-ft-m", "Male", ftM, (n) => (ftM = n))}
+          {@render count("cfg-ft-f", "Female", ftF, (n) => (ftF = n))}
+        </div>
       </div>
-      <h3>PT TSO</h3>
-      <div class="sex">
-        {@render count("cfg-pt-m", "Male", ptM, (n) => (ptM = n))}
-        {@render count("cfg-pt-f", "Female", ptF, (n) => (ptF = n))}
-        {@render count("cfg-pt-hours", "Hours/day", ptHours, (n) => (ptHours = n), 1, 12)}
-        {@render count("cfg-pt-days", "Days/week", ptDays, (n) => (ptDays = n), 1, 6)}
+      <div class="fte-pos">
+        <div class="fte-head">
+          <h3>PT TSO</h3>
+          {@render genderControls("pt", "PT", ptM, ptF)}
+        </div>
+        <div class="sex">
+          {@render count("cfg-pt-m", "Male", ptM, (n) => (ptM = n))}
+          {@render count("cfg-pt-f", "Female", ptF, (n) => (ptF = n))}
+          {@render count("cfg-pt-hours", "Hours/day", ptHours, (n) => (ptHours = n), 1, 12)}
+          {@render count("cfg-pt-days", "Days/week", ptDays, (n) => (ptDays = n), 1, 6)}
+        </div>
       </div>
-      <h3>LTSO</h3>
-      <div class="sex">
-        {@render count("cfg-ltso-m", "Male", ltsoM, (n) => (ltsoM = n))}
-        {@render count("cfg-ltso-f", "Female", ltsoF, (n) => (ltsoF = n))}
+      <div class="fte-pos">
+        <div class="fte-head">
+          <h3>LTSO</h3>
+          {@render genderControls("ltso", "LTSO", ltsoM, ltsoF)}
+        </div>
+        <div class="sex">
+          {@render count("cfg-ltso-m", "Male", ltsoM, (n) => (ltsoM = n))}
+          {@render count("cfg-ltso-f", "Female", ltsoF, (n) => (ltsoF = n))}
+        </div>
       </div>
-      <h3>STSO</h3>
-      <div class="sex">
-        {@render count("cfg-stso-m", "Male", stsoM, (n) => (stsoM = n))}
-        {@render count("cfg-stso-f", "Female", stsoF, (n) => (stsoF = n))}
+      <div class="fte-pos">
+        <div class="fte-head">
+          <h3>STSO</h3>
+          {@render genderControls("stso", "STSO", stsoM, stsoF)}
+        </div>
+        <div class="sex">
+          {@render count("cfg-stso-m", "Male", stsoM, (n) => (stsoM = n))}
+          {@render count("cfg-stso-f", "Female", stsoF, (n) => (stsoF = n))}
+        </div>
       </div>
+      <p class="hint">Ignore gender skips sex on that position only. Remove from count still builds the line, and leaves it out of counted M and F. The figure is counted M / counted F / total lines.</p>
       <h3>Training</h3>
       <div class="sex">
         {@render count("cfg-esti", "ESTI", esti, (n) => (esti = n))}
         {@render count("cfg-msti", "MSTI", msti, (n) => (msti = n))}
       </div>
-      <label class="check">
-        <input
-          type="checkbox"
-          id="cfg-ignore-gender"
-          checked={ignoreGender}
-          onchange={(event) => (ignoreGender = (event.currentTarget as HTMLInputElement).checked)}
-        />
-        Ignore gender
-      </label>
-      <p class="hint">When on, generate does not assign or balance by sex. Counts are still male + female. Useful for PT.</p>
       <div class="row-actions">
         <button type="button" class="btn" id="btn-add-position" onclick={addExtra}>+ Add position</button>
       </div>
@@ -431,6 +505,32 @@
               Name
               <input type="text" data-extra-name={pos.id} value={pos.name} oninput={(event) => (pos.name = read(event).trim() || "Position")} />
             </label>
+            <label class="check">
+              <input
+                type="checkbox"
+                id={"extra-ignore-" + pos.id}
+                checked={!!pos.ignoreGender}
+                onchange={(event) => (pos.ignoreGender = (event.currentTarget as HTMLInputElement).checked)}
+              />
+              Ignore gender
+            </label>
+            {@render count(
+              "extra-drop-m-" + pos.id,
+              "Remove from count M",
+              Math.min(int(pos.dropM), int(pos.m)),
+              (n) => (pos.dropM = n),
+              0,
+              int(pos.m),
+            )}
+            {@render count(
+              "extra-drop-f-" + pos.id,
+              "Remove from count F",
+              Math.min(int(pos.dropF), int(pos.f)),
+              (n) => (pos.dropF = n),
+              0,
+              int(pos.f),
+            )}
+            <p class="tally">{plannedHeadcount(pos.m, pos.f, pos).M}/{plannedHeadcount(pos.m, pos.f, pos).F}/{plannedHeadcount(pos.m, pos.f, pos).T}</p>
             {@render count("extra-m-" + pos.id, "Male", int(pos.m), (n) => (pos.m = n))}
             {@render count("extra-f-" + pos.id, "Female", int(pos.f), (n) => (pos.f = n))}
             <label>
@@ -788,7 +888,7 @@
   </div>
 </section>
 
-<GenerateModal {open} {session} {ignoreGender} onIgnoreGender={(checked) => (ignoreGender = checked)} onclose={closeModal} />
+<GenerateModal {open} {session} onclose={closeModal} />
 
 <style>
   .build,
@@ -823,6 +923,33 @@
   .section-head {
     align-items: center;
     justify-content: space-between;
+  }
+
+  .fte-pos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .fte-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+  }
+
+  .fte-head h3,
+  .tally {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .tally {
+    margin: 0;
+    color: var(--ink);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
   }
 
   .generate,
