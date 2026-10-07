@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working on this repo. The map is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Do not re-derive it from memory. If a change moves a module, update that file in the same commit.
+Guidance for Claude Code when working on this repo. The map is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The Alpha math that is not in this tree yet is [docs/PORT-FROM-ALPHA.md](docs/PORT-FROM-ALPHA.md). Do not re-derive either from memory. If a change moves a module, update the map in the same commit.
 
 ## What this is
 
