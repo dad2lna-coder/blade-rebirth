@@ -1,0 +1,8 @@
+{
+  "id": "teams",
+  "label": "Teams",
+  "order": 9,
+  "slots": ["stage"],
+  "init": "initTeams",
+  "subs": []
+}

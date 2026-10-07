@@ -1,0 +1,8 @@
+{
+  "id": "lines",
+  "label": "Lines",
+  "order": 3,
+  "slots": ["stage"],
+  "init": "initLines",
+  "subs": []
+}

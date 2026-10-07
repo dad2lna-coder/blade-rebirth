@@ -1,0 +1,8 @@
+{
+  "id": "shared",
+  "label": "Shared",
+  "order": 0,
+  "slots": ["stage"],
+  "init": "initShared",
+  "subs": []
+}

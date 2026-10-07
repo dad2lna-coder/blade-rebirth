@@ -1,0 +1,8 @@
+{
+  "id": "reports",
+  "label": "Reports",
+  "order": 5,
+  "slots": ["stage"],
+  "init": "initReports",
+  "subs": []
+}

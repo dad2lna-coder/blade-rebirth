@@ -1,0 +1,8 @@
+{
+  "id": "build",
+  "label": "Build",
+  "order": 2,
+  "slots": ["stage"],
+  "init": "initBuild",
+  "subs": []
+}

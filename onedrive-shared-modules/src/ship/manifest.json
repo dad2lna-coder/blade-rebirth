@@ -1,0 +1,8 @@
+{
+  "id": "ship",
+  "label": "Ship",
+  "order": 7,
+  "slots": ["stage"],
+  "init": "initShip",
+  "subs": []
+}

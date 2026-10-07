@@ -1,0 +1,8 @@
+{
+  "id": "demand",
+  "label": "Demand",
+  "order": 6,
+  "slots": ["stage"],
+  "init": "initDemand",
+  "subs": []
+}

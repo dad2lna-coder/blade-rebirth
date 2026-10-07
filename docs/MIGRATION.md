@@ -1,6 +1,9 @@
 # Migration plan
 
-Move BLADE_Alpha `bright-garden` (`17d5575`) onto the Svelte module tree without changing a scheduling result. Behavior spec: [PORT-FROM-ALPHA.md](PORT-FROM-ALPHA.md). Folder shape: that file's target tree. This file is the order of work.
+Move BLADE_Alpha `bright-garden` (`17d5575`) onto the Svelte module tree without changing a scheduling result.
+
+Status: phase 0, 1, 2.1, and 2.2 are in the tree. See [ORACLE.md](ORACLE.md). Do not restart them.
+ Behavior spec: [PORT-FROM-ALPHA.md](PORT-FROM-ALPHA.md). Folder shape: that file's target tree. This file is the order of work.
 
 Alpha `npm test` is the oracle. Rebirth has no tests. A Svelte screen is not allowed to call a function until the Alpha test that covers that function is green against the new path.
 
