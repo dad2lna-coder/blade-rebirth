@@ -1,21 +1,18 @@
-# blade-rebirth Build: Period & Dates
+# Period dates
 
-This folder contains the period configuration logic:
+`dates.js` is the only file here. There is no `SetupPanel.svelte`.
 
-## Files
+The Build form owns the inputs (`startDate`, `weekCount`, `generateSeed`, open/close). This module only parses and steps dates.
 
-### period/SetupPanel.svelte
-- Main setup component for period/date configuration
-- Handles schedule start date, week count, and seed
-- Manages period metadata for generation
+| Export | Job |
+| --- | --- |
+| `now` | Current date |
+| `parseStartDate` | Form or import value → date. Accepts a Luxon-like object when one is present. Luxon is not a dependency. |
+| `toDateInputValue` | Date → `YYYY-MM-DD` for `<input type="date">` |
+| `addDays` | Date plus N days |
+| `weekdaySun0` | Sunday = 0 |
+| `dj` | Alias used by older call sites |
 
-## Responsibilities
-- Period/date configuration
-- Schedule start and end date management
-- Week count configuration
-- Generation seed management
-- Period metadata storage
+Used by `sessionIo.js`, `BuildPanel.svelte`, `schedule/buildScheduleForLine.js`, and `function-coverage/attach.js` (`addDays`, `weekdaySun0` copied onto the session).
 
-## Dependencies
-- `types.ts` (SetupSession interface)
-- `dates.js` (date utilities)
+Ship does not use this module. `modules/ship/ebid.js` has its own `toIsoDate`, `addDaysIso`, and `weekdaySun0`.

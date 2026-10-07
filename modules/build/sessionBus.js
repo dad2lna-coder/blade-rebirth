@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** Notifies Ship when the shared setup session lines change. Not a line store. */
+/** Fan-out when shared session lines change. Listeners: Build, Review, Ship, Present, Teams. Not a line store. */
 
 const listeners = new Set();
 

@@ -1,73 +1,99 @@
-# Recommendations for Improvement
+# Recommendations
 
-## Issue: Type Definition Mismatch in Session
+Structural cuts only. Behavior stays. The map is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-**Location:** `/root/blade-rebirth/modules/build/types.ts`
+Closed, do not reopen: `approveParitySwaps` and `approveDfoCertBalance` already return `boolean` on `SetupSession` (`types.ts`). An older note cited `/root/blade-rebirth` paths and treated that mismatch as open. It is not.
 
-**Problem:** The `SetupSession` type definition declares `approveParitySwaps` as returning `void`, but the actual implementation in `/root/blade-rebirth/modules/build/actions/parityReport.js` (line 369) returns `boolean`.
+## 1. Break up `BuildPanel.svelte` (~1250 lines)
 
-**Note:** The empty stub in `createEmptySession` (`session.ts:36`) is overwritten at runtime by `attachParityReport` (`session.ts:57`), which assigns the real implementation. The function works correctly at runtime — the type mismatch is a static type-only issue, not a runtime no-op.
+447 lines of script, 544 of markup, 249 of style. One `$effect(commit)` writes period, hours, FTE, gender, shifts, extras, function coverage, and certs. Import, export, clear, generate, and baggage resolve sit beside it.
 
-**Recommendation:** 
-1. Update the `SetupSession` type definition to match the actual function signature:
-   ```typescript
-   approveParitySwaps: (pairs: ParitySwap[]) => boolean;
-   ```
-2. Ensure all attached methods in `createEmptySession` have type definitions in `SetupSession` that match their runtime return types.
+Leave `BuildPanel.svelte` as the composer (~150 lines). Move:
 
-## Status: FIX APPLIED
+| New file | Owns |
+| --- | --- |
+| `modules/build/setupForm.ts` | The field list, `commit`, `hydrate`. The `$effect` stays in the panel and calls these |
+| `PeriodHours.svelte` | Start, weeks, seed, open, close |
+| `FteGender.svelte` | FT / PT / LTSO / STSO / ESTI / MSTI and `positionGender` |
+| `ShiftsEditor.svelte` | Add, remove, RDO, per-day times |
+| `ExtraPositions.svelte` | Extra cards and per-shift counts |
+| `FunctionCoverageForm.svelte` | Mode, pools, requirement bands |
+| `CertPoolForm.svelte` | Pool letters and the DFO / BAG / PAX map |
+| `SessionBar.svelte` | Generate, import, export, clear, resolve baggage |
+| `GenerateResult.svelte` | The tally under the form |
 
-### Changes Made
+Do not give each card its own copy of `session`. Pass the slice in, call `commit` on input.
 
-1. **`/root/blade-rebirth/modules/build/types.ts`**
-   - Fixed `approveParitySwaps` return type from `void` to `boolean`
-   - Fixed `approveDfoCertBalance` return type from `void` to `boolean`
+## 2. Break up `ship/ebid.js` (~850 lines)
 
-2. **`/root/blade-rebirth/modules/build/session.ts`**
-   - Updated `approveParitySwaps` stub to return `false` instead of `{}`
-   - Updated `approveDfoCertBalance` stub to return `false` instead of `{}`
-   - Added missing type imports: `ParitySwap`, `DfoResult`, `DfoProposal`
+Five jobs, one file. `ShipPanel.svelte` (~650) should keep the form and the download. After this split, pull the preview table and the QA list out of the panel if it is still over ~400 lines.
 
-### Runtime Behavior Verification
+| New file | Owns |
+| --- | --- |
+| `ebidColumns.js` | `EBID_HEADERS`, `EBID_COLUMNS`, `DAY_ABBR`, title lists |
+| `ebidTime.js` | `toIsoDate`, `addDaysIso`, `weekdaySun0`, `toHHMM`, spans, hours. Delete the copies that duplicate `period/dates.js` and `shifts/time.js` where the behavior matches |
+| `ebidRow.js` | `buildRowFromLine`, `rowsFromLines`, `rowsFromScheduler`, `rowToCells` |
+| `ebidCsv.js` | `toCsv`, `rowsFromCsv`, `looksLikeEbidExport` |
+| `ebidQa.js` | `runQa` |
 
-The actual implementations already worked correctly:
+`rowsFromJsonPayload` can live next to `ebidCsv.js` or in `ebidImport.js`. It must keep today's rule: fallback import does not write the session.
 
-- `approveParitySwaps` in `/modules/build/actions/parityReport.js` returns `boolean`
-- `approveDfoCertBalance` in `/modules/build/actions/dfoCertBalance.js` returns `boolean`
+## 3. Split the generate modal on the section boundaries that already exist
 
-### Impact
+`GenerateModal.svelte` is 103 lines of script and 388 of markup. `generateModal.ts` (~520) is the behavior.
 
-These changes resolve the type definition mismatch between the interface and implementation. No runtime behavior changes - the functions already worked correctly.
+| View | Model |
+| --- | --- |
+| `ModalTargets.svelte` | `targetModel`, `adjustTarget`, `selectTargetClass`, `generateAll`, `generateOneClass` |
+| `ModalParity.svelte` | `parityBands`, `runParityCheck`, `approveParity` |
+| `ModalDfo.svelte` | `runDfoPropose`, `approveDfo` |
 
-## Additional Observations
+Delete `getBandKey`, `getBandLabel`, and `formatRdos` from `generateModal.ts`. Call `shifts/shiftMath.js` and `actions/parityReport.js`. Three copies of `getBandKey` is how the band labels drift.
 
-- The code review agent (`/code-review`) became unresponsive after 50+ minutes, suggesting potential performance issues with large codebase analysis. Consider:
-  - Adding file/exclude patterns to focus review on relevant source files
-  - Increasing timeout thresholds for background agents
-  - Implementing incremental review for large files
+## 4. Pull the line factory out of `classGenerate.js` (~510)
 
-- No test files were found in the project. Consider adding unit tests for:
-  - Parity proposal generation (`checkParity`)
-  - DFO certification balancing (`proposeDfoCertBalance`)
-  - UI interaction flows in `GenerateModal.svelte`
+`generateClass` should stay the orchestrator. Move `placeOpen` and `createLineForClass` (~180 lines, from the inner helpers) to `actions/lineFactory.js`. `buildLines.js` keeps the full-generate builder. Do not merge the two builders in this pass; they do not take the same arguments.
 
-## Related Codebase Patterns
+## 5. `parityReport.js` (~430)
 
-After examining the codebase, I noticed several related typing patterns to maintain consistency:
+`checkParity` is the bulk (about line 58–368). Move that scan to `actions/parityScan.js`. Leave `approveParitySwaps` and `attachParityReport` in `parityReport.js`.
 
-1. **`approveParitySwaps`** (returns `boolean`) ✅ FIXED
-2. **`approveDfoCertBalance`** (returns `boolean`) ✅ FIXED
-3. **`checkParity`** (returns `ParityResult`)
-4. **`proposeDfoCertBalance`** (returns `DfoResult`)
+## 6. Delete the dead half of `extraPositions.js` (~420)
 
-Maintaining consistent typing patterns across the codebase helps prevent similar issues.
+`session.ts` does not call `attachExtraPositions`. Generate never sees `readExtraPositionsFromDom`. The HTML writer (`extraCardsHtml`, `#extra-pos-list`) has no host in the Svelte form.
 
-## Verification Steps
+Keep `opsFteYes`, `lineInOpsCoverage`, `normalizeExtraPosition`, `buildExtraPositionLines`. Remove `readExtraListFromDom`, `extraCardsHtml`, and `attachExtraPositions`. Same treatment, separate change, for `certsLegacy.js` DOM ids (`#cfg-cert-*`) once nothing in `allocation.js` or `certs.js` references them. Do not reattach them to "restore Alpha."
 
-To verify the fix:
-1. Check the TypeScript compilation
-2. Restart the development server
-3. Open the Generate modal
-4. Run a parity check that yields proposals
-5. Select proposals and click "Approve RDO Swaps"
-6. Verify that the session state updates and the UI reflects changes
+## 7. One revision signal
+
+Build, Lines, Coverage, Reports, Ship, Present, and Teams each keep a local `tick` and subscribe with `onSessionLines`. Export a `sessionRev` rune (or a number the bus increments) from `sessionBus.js` and `$derived` off that. Then the bus comment and the panels agree.
+
+## 8. Type the state you already have
+
+`defaultSetupState()` is the shape. `SetupState` is not. Expand `SetupState` to those keys, and add an `AttachedSession` for the methods `createEmptySession` actually assigns (`getShift`, `timeToMin`, `generateFunctionAssignments`, `resolveBagDuties`, `teams`, …). Stop casting `session as` in every panel. Do this after the splits, or the type edits will collide with the moves.
+
+## 9. Tests, once a file is pure
+
+No tests exist. First targets, in this order, because they have no DOM:
+
+1. `validateGenerateInputs`
+2. `period/dates.js`
+3. `ebid` `rowToCells` + `runQa` (after the split)
+4. `fte/gender.js` `policyFor` / `plannedHeadcount`
+5. `function-coverage/lib/migrate.js`
+
+Do not snapshot `BuildPanel`.
+
+## Leave alone
+
+- `LinesPanel.svelte` (~455). Behavior is in `rows.js` and `edit.js`.
+- `assign.js` (~360) and `certifiedPools.js` (~329). Already one job each. Next cut inside `assign.js` is the per-day rotation loop, not a new folder.
+- `generate.js` (~194). It is the coordinator. Keep it that way.
+- `src/app.css` (~309). Shell tokens. Panel styles stay scoped.
+- `ReportsPanel.svelte` and `PresentPanel.svelte`. They are small and read-only. Sharing a snapshot helper is optional, not a split.
+
+## Do not
+
+- Add drag-and-drop to Teams to match an old README line. The select is the UI.
+- Read `setupStore.fte` / `.period` / `.functionCoverage`. Writers are `BuildPanel.commit` and `sessionIo.mirrorStore`. Readers must use `session.state`.
+- Introduce a second line store, a CDN, or a vendored copy of a library the lockfile does not already build.
