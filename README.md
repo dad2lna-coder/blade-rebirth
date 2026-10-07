@@ -10,7 +10,7 @@ Sibling runtime: [BLADE-Runtime](https://github.com/dad2lna-coder/BLADE-Runtime)
 
 Plan is a timeline stub. It does not read the period and it does not upload. Build is the setup form and the generate engine. Review, Ship, Present, and Teams read that same session. Present is a figure strip (period, hours, lines, FTE), not a slide deck. Teams auto-forms by RDO and start time; people move with a select, not drag-and-drop. No intro.
 
-Map, module graph, and npm pins: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). File splits: [RECOMMENDATIONS.md](RECOMMENDATIONS.md). What still has to match Alpha: [docs/PORT-FROM-ALPHA.md](docs/PORT-FROM-ALPHA.md).
+Map, module graph, and npm pins: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). File splits: [RECOMMENDATIONS.md](RECOMMENDATIONS.md). What still has to match Alpha: [docs/PORT-FROM-ALPHA.md](docs/PORT-FROM-ALPHA.md). Order of work: [docs/MIGRATION.md](docs/MIGRATION.md).
 
 **Live:** https://dad2lna-coder.github.io/blade-rebirth/
 

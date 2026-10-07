@@ -2,6 +2,8 @@
 
 Planning only. Do not treat this file as permission to paste Alpha UI into rebirth.
 
+Work order: [MIGRATION.md](MIGRATION.md). This file is the behavior list that order must not regress.
+
 Compared:
 
 - Alpha: `dad2lna-coder/BLADE_Alpha` @ `bright-garden` `17d5575` (2026-10-07). "keep female leadership on duty; spread leadership RDOs."
