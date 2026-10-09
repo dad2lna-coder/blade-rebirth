@@ -98,11 +98,11 @@ graph TD
     teams -->|reads/writes| session_ts
     
     %% Session Bus Communication
-    session_bus -.->|notifySessionLines()| build
-    session_bus -.->|notifySessionLines()| review
-    session_bus -.->|notifySessionLines()| ship
-    session_bus -.->|notifySessionLines()| present
-    session_bus -.->|notifySessionLines()| teams
+    session_bus -.->|notifySessionLines| build
+    session_bus -.->|notifySessionLines| review
+    session_bus -.->|notifySessionLines| ship
+    session_bus -.->|notifySessionLines| present
+    session_bus -.->|notifySessionLines| teams
     
     %% Panels to Session Bus
     build -.->|onSessionLines| session_bus
