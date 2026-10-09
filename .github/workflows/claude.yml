@@ -1,0 +1,74 @@
+# Claude Code via self-hosted runner + OmniRoute gateway.
+#
+# SECURITY: this repo is PUBLIC. This workflow is LOCKED to the repo owner:
+#   - the job only runs when the text contains '@claude' AND
+#     github.actor == 'dad2lna-coder' AND the comment/issue/review author is OWNER.
+#   - no pull_request / pull_request_target triggers (fork PRs cannot start it).
+#   - runs only on the private self-hosted runner (label: omniroute) as the
+#     unprivileged 'gh-runner' user; model calls go to OmniRoute (combo: ha-chain).
+# Do not loosen these conditions without understanding the risk of untrusted
+# code/prompts executing on the self-hosted runner.
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    if: |
+      github.actor == 'dad2lna-coder' && (
+        (github.event_name == 'issue_comment' &&
+          contains(github.event.comment.body, '@claude') &&
+          github.event.comment.author_association == 'OWNER') ||
+        (github.event_name == 'pull_request_review_comment' &&
+          contains(github.event.comment.body, '@claude') &&
+          github.event.comment.author_association == 'OWNER') ||
+        (github.event_name == 'pull_request_review' &&
+          contains(github.event.review.body, '@claude') &&
+          github.event.review.author_association == 'OWNER') ||
+        (github.event_name == 'issues' &&
+          (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+          github.event.issue.author_association == 'OWNER')
+      )
+    runs-on: [self-hosted, omniroute]
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read # lets Claude read CI results on PRs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: http://100.112.60.123:20128
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.OMNIROUTE_TOKEN }}
+          ANTHROPIC_MODEL: ha-chain
+          ANTHROPIC_DEFAULT_SONNET_MODEL: ha-chain
+          ANTHROPIC_DEFAULT_OPUS_MODEL: ha-chain
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: ha-chain
+        with:
+          anthropic_api_key: ${{ secrets.OMNIROUTE_TOKEN }}
+          # Use the built-in workflow token instead of the Claude GitHub App.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: |
+            --model ha-chain
