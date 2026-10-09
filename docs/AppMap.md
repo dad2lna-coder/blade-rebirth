@@ -128,7 +128,7 @@ graph TD
     
     %% Styling
     class Shell,Session,Panels,BuildEngine,TeamsEngine,ShipEngine fill:#f9f9f9,stroke:#333,stroke-width:1px;
-    class index_html,main_ts,app_svelte,lib_tabs,lib_theme,events_ts fill:#e3f2fd,stroke:#1976d2;
+    class index_html,main_ts,app_svelte,lib_tabs,lib_theme,events_ts fill:#E3F2FD,stroke:#1976D2;
     class session_ts,session_bus,session_io,setup_store fill:#fff3e0,stroke:#f57c00;
     class plan,build,review,ship,present,teams,lines,coverage,reports fill:#e8f5e9,stroke:#388e3c;
     class generate,classGenerate,allocation,parityReport,dfoCertBalance,functionCoverage fill:#f3e5f5,stroke:#6a1b9a;
